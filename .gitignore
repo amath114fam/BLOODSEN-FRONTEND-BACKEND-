@@ -1,0 +1,18 @@
+# Frontend
+bloodsen-frontend/node_modules/
+bloodsen-frontend/dist/
+
+# Backend
+bloodsen-backend/__pycache__/
+bloodsen-backend/**/__pycache__/
+bloodsen-backend/*.pyc
+bloodsen-backend/venv/
+bloodsen-backend/db.sqlite3
+
+# Secrets (jamais versionnés)
+.env
+bloodsen-backend/.env
+
+# OS / éditeurs
+.DS_Store
+.vscode/

@@ -1,0 +1,90 @@
+services:
+
+  # =========================
+  # BASE DE DONNÉES POSTGRESQL
+  # =========================
+  db:
+    # Image PostgreSQL utilisée pour créer le conteneur de la base de données
+    image: postgres:16-alpine
+
+    # Redémarre automatiquement le conteneur sauf si on l'arrête volontairement
+    restart: unless-stopped
+
+    # Crée la base, l'utilisateur et le mot de passe PostgreSQL
+    environment:
+      POSTGRES_DB: bloodsen
+      POSTGRES_USER: bloodsen
+      POSTGRES_PASSWORD: bloodsen_password
+
+    # Stocke les données PostgreSQL en dehors du conteneur
+    # afin qu'elles ne soient pas perdues lors de sa suppression
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # Rend PostgreSQL accessible sur le port 5432 de la machine
+    ports:
+      - "5432:5432"
+
+
+  # =========================
+  # BACKEND DJANGO
+  # =========================
+  backend:
+    # Construit l'image Docker à partir du Dockerfile situé dans bloodsen-backend
+    build: ./bloodsen-backend
+
+    # Monte le code Django local dans /app du conteneur
+    # Cela permet de voir les modifications du code sans reconstruire l'image
+    volumes:
+      - ./bloodsen-backend:/app
+
+    # Permet d'accéder au serveur Django depuis la machine
+    ports:
+      - "8000:8000"
+
+    # Charge les variables de configuration du backend depuis le fichier .env
+    env_file:
+      - ./bloodsen-backend/.env
+
+    # Indique que le backend dépend du service PostgreSQL
+    # Docker démarre donc db avant de démarrer backend
+    depends_on:
+      - db
+
+
+  # =========================
+  # FRONTEND VUE.JS
+  # =========================
+  frontend:
+    # Construit l'image Docker à partir du Dockerfile situé dans bloodsen-frontend
+    build: ./bloodsen-frontend
+
+    # Monte le code Vue local dans /app du conteneur
+    # Les modifications du code sont ainsi visibles directement
+    volumes:
+      - ./bloodsen-frontend:/app
+
+      # Conserve node_modules dans le conteneur
+      # pour éviter qu'il soit écrasé par le dossier local
+      - /app/node_modules
+
+    # Permet d'ouvrir l'application Vue depuis le navigateur
+    ports:
+      - "5173:5173"
+
+    # Indique au frontend l'adresse de l'API Django
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+
+    # Le frontend dépend du backend pour communiquer avec l'API
+    depends_on:
+      - backend
+
+
+# =========================
+# VOLUMES DOCKER
+# =========================
+
+# Volume permanent utilisé pour conserver les données PostgreSQL
+volumes:
+  postgres_data:

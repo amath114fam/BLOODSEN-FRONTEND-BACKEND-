@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+:root {
+    --bloodsen-red: #D71920;
+    --bloodsen-dark: #102A43;
+    --bloodsen-light: #F8F9FA;
+    --bloodsen-border: #E5E7EB;
+}
+
+* {
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    margin: 0;
+    background-color: #fff;
+    color: var(--bloodsen-dark);
+}

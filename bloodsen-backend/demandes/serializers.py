@@ -1,0 +1,119 @@
+from rest_framework import serializers
+
+from .models import Demande, Sollicitation
+
+
+class DemandeCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer utilisé pour CRÉER une demande (POST).
+
+    On n'expose que les champs que la structure doit fournir.
+    La structure est déduite de l'utilisateur connecté : pas besoin
+    de la passer dans le payload.
+    """
+
+    class Meta:
+        model = Demande
+        fields = [
+            'id',             # renvoyé en lecture après création
+            'groupe_sanguin',
+            'quantite',
+            'urgence',
+            'message',
+            'date_limite',
+        ]
+        read_only_fields = ['id']
+
+
+class DemandeSerializer(serializers.ModelSerializer):
+    """
+    Serializer utilisé pour LIRE une demande (GET).
+
+    On expose plus d'infos : le nom de la structure, les dates
+    automatiques, et le nombre de sollicitations générées.
+    """
+
+    structure_nom = serializers.CharField(
+        source='structure.nom_structure',
+        read_only=True,
+    )
+    structure_region = serializers.CharField(
+        source='structure.region',
+        read_only=True,
+    )
+    structure_ville = serializers.CharField(
+        source='structure.ville',
+        read_only=True,
+    )
+    nombre_sollicitations = serializers.IntegerField(
+        source='sollicitations.count',
+        read_only=True,
+    )
+
+    class Meta:
+        model = Demande
+        fields = [
+            'id',
+            'structure_nom',
+            'structure_region',
+            'structure_ville',
+            'groupe_sanguin',
+            'quantite',
+            'urgence',
+            'message',
+            'statut',
+            'date_creation',
+            'date_limite',
+            'nombre_sollicitations',
+        ]
+
+
+class SollicitationSerializer(serializers.ModelSerializer):
+    """
+    Serializer utilisé pour LIRE une sollicitation (GET ou après action).
+
+    On inclut des infos utiles au donneur (le nom de la structure,
+    son message) et au frontend pour l'affichage.
+    """
+
+    demande_id = serializers.IntegerField(source='demande.id', read_only=True)
+    structure_nom = serializers.CharField(
+        source='demande.structure.nom_structure',
+        read_only=True,
+    )
+    structure_region = serializers.CharField(
+        source='demande.structure.region',
+        read_only=True,
+    )
+    structure_ville = serializers.CharField(
+        source='demande.structure.ville',
+        read_only=True,
+    )
+    groupe_sanguin = serializers.CharField(
+        source='demande.groupe_sanguin',
+        read_only=True,
+    )
+    urgence = serializers.CharField(
+        source='demande.urgence',
+        read_only=True,
+    )
+    message = serializers.CharField(
+        source='demande.message',
+        read_only=True,
+    )
+
+    class Meta:
+        model = Sollicitation
+        fields = [
+            'id',
+            'demande_id',
+            'structure_nom',
+            'structure_region',
+            'structure_ville',
+            'groupe_sanguin',
+            'urgence',
+            'message',
+            'statut',
+            'date_creation',
+            'date_reponse',
+        ]

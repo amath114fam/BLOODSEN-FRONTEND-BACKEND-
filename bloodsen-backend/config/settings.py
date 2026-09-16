@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     'corsheaders',
       # Application qui gère les utilisateurs et l'authentification
     'accounts',
+    'demandes',         # demandes de sang + sollicitations
+    'participations',   # participations des donneurs
 
 ]
 

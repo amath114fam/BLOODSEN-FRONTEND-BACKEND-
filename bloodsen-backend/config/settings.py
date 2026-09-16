@@ -15,10 +15,10 @@ from pathlib import Path
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv()
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,13 +44,28 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'rest_framework_simplejwt',  # gestion des tokens JWT
+    'drf_spectacular',            # génération automatique de la doc Swagger
     'corsheaders',
+      # Application qui gère les utilisateurs et l'authentification
+    'accounts',
 
 ]
 
+# Indiquer à Django d'utiliser notre modèle Utilisateur personnalisé
+AUTH_USER_MODEL = 'accounts.Utilisateur'
+
+REST_FRAMEWORK = {
+    # Toutes les vues utiliseront JWT pour identifier l'utilisateur connecté
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    # drf-spectacular génère le schéma OpenAPI utilisé par Swagger
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -147,3 +162,54 @@ CORS_ALLOWED_ORIGINS = os.getenv(
 
 LANGUAGE_CODE = 'fr-fr'
 TIME_ZONE = 'Africa/Dakar'
+
+# ========================================
+# JWT — durée de vie des tokens
+# ========================================
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),   # le token d'accès expire après 1h
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),      # le refresh token expire après 7 jours
+    'ROTATE_REFRESH_TOKENS': True,  # un nouveau refresh token est généré à chaque rafraîchissement
+}
+
+# ========================================
+# SWAGGER — informations affichées sur la doc
+# ========================================
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'BloodSen API',
+    'DESCRIPTION': 'API de la plateforme BloodSen — mise en relation donneurs / structures de santé',
+    'VERSION': '1.0.0',
+}
+
+
+# Backend utilisé pour envoyer les emails
+EMAIL_BACKEND = os.getenv(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.smtp.EmailBackend',
+)
+
+# Adresse du serveur SMTP de Gmail
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+
+# Port utilisé par Gmail pour envoyer les emails
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+
+# Activer la sécurité TLS
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', '1') == '1'
+
+# Adresse email utilisée pour envoyer les messages
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+
+# Mot de passe de l'adresse email
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+
+# Adresse affichée comme expéditeur
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', '')
+
+# URL du frontend Vue utilisée dans le lien de vérification
+FRONTEND_URL = os.getenv(
+    'FRONTEND_URL',
+    'http://localhost:5173'
+)

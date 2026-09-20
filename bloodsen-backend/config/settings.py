@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'accounts',
     'demandes',         # demandes de sang + sollicitations
     'participations',   # participations des donneurs
+    'dashboard',
+    'rag', 
 
 ]
 
@@ -215,3 +217,41 @@ FRONTEND_URL = os.getenv(
     'FRONTEND_URL',
     'http://localhost:5173'
 )
+
+
+# ======================================
+# CONFIGURATION RAG (chatbot sur les dons de sang)
+# ======================================
+
+# Clé API Cohere (utilisée pour les embeddings)
+COHERE_API_KEY = os.getenv('COHERE_API_KEY', '')
+
+# Modèle d'embedding Cohere (1024 dimensions, multilingue)
+COHERE_EMBED_MODEL = 'embed-multilingual-v3.0'
+
+# Nombre de dimensions des vecteurs (doit matcher COHERE_EMBED_MODEL)
+# et le champ DocumentChunk.embedding
+RAG_EMBEDDING_DIMENSIONS = 1024
+
+# Taille des chunks (en mots) et chevauchement
+RAG_CHUNK_SIZE = 500
+RAG_CHUNK_OVERLAP = 50
+
+# Clé API Groq (utilisée pour la génération de réponses)
+GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
+
+# Modèle LLM Groq à utiliser
+GROQ_MODEL = 'openai/gpt-oss-120b'
+
+# Nombre maximum de chunks à envoyer au LLM comme contexte
+RAG_MAX_CHUNKS = 5
+
+# Seuil de similarité (distance cosinus maximale pour qu'un chunk soit gardé)
+RAG_SIMILARITY_THRESHOLD = 0.5
+
+
+# ======================================
+# FICHIERS MÉDIA (uploads utilisateur)
+# ======================================
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

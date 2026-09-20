@@ -4,8 +4,8 @@ services:
   # BASE DE DONNÉES POSTGRESQL
   # =========================
   db:
-    # Image PostgreSQL utilisée pour créer le conteneur de la base de données
-    image: postgres:16-alpine
+    # Image PostgreSQL 16 + extension pgvector préinstallée (pour les embeddings RAG)
+    image: pgvector/pgvector:pg16
 
     # Redémarre automatiquement le conteneur sauf si on l'arrête volontairement
     restart: unless-stopped

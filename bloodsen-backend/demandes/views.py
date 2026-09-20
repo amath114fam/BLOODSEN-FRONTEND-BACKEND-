@@ -1,11 +1,13 @@
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db import transaction   # ← à ajouter si pas déjà présent
 
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+
 
 from .models import Demande, Sollicitation
 from .serializers import DemandeCreateSerializer, DemandeSerializer, SollicitationSerializer
@@ -167,7 +169,18 @@ class ListeDemandesView(APIView):
 # Vue : lister les sollicitations du donneur connecté
 # ===================================================
 
-@extend_schema(responses=SollicitationSerializer(many=True))
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name='statut',
+            description="Filtrer par statut de sollicitation (en_attente, acceptee, refusee, expiree)",
+            required=False,
+            type=str,
+            enum=['en_attente', 'acceptee', 'refusee', 'expiree'],
+        ),
+    ],
+    responses=SollicitationSerializer(many=True),
+)
 class MesSollicitationsView(APIView):
     """
     GET /api/sollicitations/
@@ -186,11 +199,119 @@ class MesSollicitationsView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # 2. Récupérer les sollicitations du donneur connecté
+        # 2. Construire le queryset de base (toutes les sollicitations du donneur)
         sollicitations = Sollicitation.objects.filter(
             donneur=request.user.profil_donneur
-        ).order_by('-date_creation')  # le '-' = tri décroissant
+        )
 
-        # 3. Sérialiser et renvoyer
+        # 3. Filtre optionnel sur le statut.
+        #    On lit le paramètre ?statut=... s'il est fourni.
+        statut = request.query_params.get('statut')
+        if statut:
+            sollicitations = sollicitations.filter(statut=statut)
+
+        # 4. Trier par date décroissante
+        sollicitations = sollicitations.order_by('-date_creation')
+
+        # 5. Sérialiser et renvoyer
         serializer = SollicitationSerializer(sollicitations, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ===================================================
+# Vue : annuler une demande
+# ===================================================
+
+@extend_schema(request=None)
+class AnnulerDemandeView(APIView):
+    """
+    POST /api/demandes/<id>/annuler/
+
+    Permet à une structure d'annuler une de ses propres demandes
+    tant qu'elle est encore "en_cours".
+
+    Effets de bord :
+      - Toutes les sollicitations "en_attente" liées passent à "expiree"
+        (elles n'ont plus de sens puisque la demande est annulée)
+      - Les sollicitations déjà traitées (acceptee / refusee) ne changent pas
+        (elles restent dans l'historique)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        # 1. Récupérer la demande
+        demande = get_object_or_404(Demande, pk=pk)
+
+        # 2. Vérifier que l'utilisateur est bien une structure
+        if request.user.role != 'structure':
+            return Response(
+                {"detail": "Seule une structure peut annuler une demande."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 3. Vérifier que la structure est bien propriétaire
+        if demande.structure != request.user.profil_structure:
+            return Response(
+                {"detail": "Cette demande ne vous appartient pas."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 4. Vérifier que la demande est encore "en_cours"
+        if demande.statut != Demande.Statut.EN_COURS:
+            return Response(
+                {"detail": f"Impossible d'annuler : la demande est déjà au statut '{demande.statut}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 5. Tout se passe dans une transaction : soit tout réussit, soit rien
+        with transaction.atomic():
+            # 5a. Marquer les sollicitations "en_attente" comme "expiree"
+            Sollicitation.objects.filter(
+                demande=demande,
+                statut=Sollicitation.Statut.EN_ATTENTE,
+            ).update(statut=Sollicitation.Statut.EXPIREE)
+
+            # 5b. Passer la demande à "annulee"
+            demande.statut = Demande.Statut.ANNULEE
+            demande.save(update_fields=['statut'])
+
+        # 6. Renvoyer la demande mise à jour
+        serializer = DemandeSerializer(demande)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# ===================================================
+# Vue : détail d'une demande
+# ===================================================
+
+@extend_schema(responses=DemandeSerializer)
+class DetailDemandeView(APIView):
+    """
+    GET /api/demandes/<id>/
+
+    Renvoie le détail d'une demande précise. Seule la structure
+    propriétaire peut y accéder (les autres structures et les
+    donneurs sont refusés).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        # 1. Récupérer la demande
+        demande = get_object_or_404(Demande, pk=pk)
+
+        # 2. Vérifier que l'utilisateur est bien une structure
+        if request.user.role != 'structure':
+            return Response(
+                {"detail": "Seule une structure peut consulter une demande."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 3. Vérifier que la structure est bien propriétaire
+        if demande.structure != request.user.profil_structure:
+            return Response(
+                {"detail": "Cette demande ne vous appartient pas."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 4. Sérialiser et renvoyer
+        serializer = DemandeSerializer(demande)
         return Response(serializer.data, status=status.HTTP_200_OK)

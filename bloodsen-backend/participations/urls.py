@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ConfirmerParticipationView
+from .views import ConfirmerParticipationView, MesParticipationsView
 
 urlpatterns = [
     path(
@@ -7,4 +7,5 @@ urlpatterns = [
         ConfirmerParticipationView.as_view(),
         name='confirmer-participation',
     ),
+    path('participations/', MesParticipationsView.as_view(), name='mes-participations'),
 ]

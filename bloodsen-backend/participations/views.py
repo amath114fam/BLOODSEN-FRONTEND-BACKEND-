@@ -8,7 +8,7 @@ from drf_spectacular.utils import extend_schema
 from demandes.models import Sollicitation      # ← import autorisé (sens demandes → participations)
 from participations.models import Participation     
 from .services import confirmer_participation
-from .serializers import ParticipationSerializer
+from .serializers import ParticipationSerializer, SollicitationStructureSerializer
 
 
 @extend_schema(request=None)
@@ -99,4 +99,54 @@ class MesParticipationsView(APIView):
 
         # 3. Sérialiser et renvoyer
         serializer = ParticipationSerializer(participations, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ===================================================
+# Vue : liste des participations/sollicitations d'une structure
+# ===================================================
+
+@extend_schema(responses=SollicitationStructureSerializer(many=True))
+class StructureParticipationsView(APIView):
+    """
+    GET /api/structure/participations/
+
+    Renvoie toutes les sollicitations liées aux demandes de la structure
+    connectée, avec leur statut combiné (pending, confirmed, etc.).
+
+    Cette vue mélange volontairement les sollicitations et les
+    participations pour que la structure voie tout le cycle :
+      - sollicitations en attente
+      - sollicitations acceptées (donneur prêt à venir)
+      - participations confirmées (don effectué)
+      - sollicitations refusées
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # 1. Vérifier le rôle
+        if request.user.role != 'structure':
+            return Response(
+                {"detail": "Cet endpoint est réservé aux structures."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        profil = request.user.profil_structure
+
+        # 2. Récupérer toutes les sollicitations liées aux demandes
+        #    de cette structure, avec les relations préchargées.
+        sollicitations = (
+            Sollicitation.objects
+            .filter(demande__structure=profil)
+            .select_related(
+                'donneur',
+                'demande',
+                'demande__structure',
+                'participation',
+            )
+            .order_by('-date_creation')
+        )
+
+        # 3. Sérialiser et renvoyer
+        serializer = SollicitationStructureSerializer(sollicitations, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

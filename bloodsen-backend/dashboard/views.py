@@ -11,8 +11,9 @@ from django.db.models import Count
 
 
 from demandes.models import Demande, Sollicitation
-from demandes.serializers import DemandeSerializer, SollicitationSerializer
+from demandes.serializers import DemandeSerializer, SollicitationSerializer, DonneurStructureSerializer
 from participations.models import Participation
+from accounts.models import ProfilDonneur
 
 
 # ===================================================
@@ -250,3 +251,98 @@ class StatsStructureView(APIView):
             "chart_semaine": chart_semaine,
             "repartition_groupes": repartition_groupes,
         }, status=status.HTTP_200_OK)
+
+# ===================================================
+# Vue : liste des donneurs d'une structure
+# ===================================================
+
+@extend_schema(responses=DonneurStructureSerializer(many=True))
+class StructureDonneursView(APIView):
+    """
+    GET /api/structure/donneurs/
+
+    Renvoie la liste des donneurs qui ont interagi avec la structure
+    connectée (via une sollicitation ou une participation).
+
+    Chaque donneur est renvoyé avec :
+      - ses infos (nom, prénom, groupe, ville, téléphone)
+      - le nombre de sollicitations reçues
+      - le nombre de participations confirmées
+      - la date de la dernière interaction
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # 1. Vérifier le rôle
+        if request.user.role != 'structure':
+            return Response(
+                {"detail": "Cet endpoint est réservé aux structures."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        profil = request.user.profil_structure
+
+        # 2. Récupérer tous les donneurs qui ont interagi avec cette structure.
+        #    On part des sollicitations liées aux demandes de cette structure,
+        #    et on récupère les donneurs uniques.
+        donneurs_ids = (
+            Sollicitation.objects
+            .filter(demande__structure=profil)
+            .values_list('donneur_id', flat=True)
+            .distinct()
+        )
+
+        donneurs = ProfilDonneur.objects.filter(id__in=donneurs_ids)
+
+        # 3. Pour chaque donneur, calculer les compteurs et la dernière interaction
+        resultats = []
+        for donneur in donneurs:
+            # Sollicitations de ce donneur pour cette structure
+            sollicitations = Sollicitation.objects.filter(
+                donneur=donneur,
+                demande__structure=profil,
+            )
+
+            nombre_sollicitations = sollicitations.count()
+
+            # Participations confirmées de ce donneur pour cette structure
+            nombre_participations = Participation.objects.filter(
+                sollicitation__donneur=donneur,
+                sollicitation__demande__structure=profil,
+                statut=Participation.Statut.CONFIRMEE,
+            ).count()
+
+            # Dernière interaction : date de la dernière sollicitation
+            derniere_sollicitation = sollicitations.order_by('-date_creation').first()
+            derniere_interaction = (
+                derniere_sollicitation.date_creation if derniere_sollicitation else None
+            )
+
+            # Initiales
+            initiales = (
+                (donneur.prenom or '')[:1] + (donneur.nom or '')[:1]
+            ).upper() or '?'
+
+            resultats.append({
+                'id': donneur.id,
+                'nom': donneur.nom,
+                'prenom': donneur.prenom,
+                'groupe_sanguin': donneur.groupe_sanguin,
+                'ville': donneur.ville,
+                'region': donneur.region,
+                'telephone': donneur.telephone,
+                'initiales': initiales,
+                'nombre_sollicitations': nombre_sollicitations,
+                'nombre_participations': nombre_participations,
+                'derniere_interaction': derniere_interaction,
+            })
+
+        # 4. Trier par date de dernière interaction décroissante
+        resultats.sort(
+            key=lambda x: x['derniere_interaction'] or timezone.datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+
+        # 5. Sérialiser et renvoyer
+        serializer = DonneurStructureSerializer(resultats, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

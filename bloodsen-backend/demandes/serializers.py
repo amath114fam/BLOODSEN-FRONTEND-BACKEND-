@@ -174,3 +174,25 @@ class SollicitationSerializer(serializers.ModelSerializer):
             'date_creation',
             'date_reponse',
         ]
+
+# =====================================================
+# SERIALIZER : donneurs d'une structure
+# =====================================================
+
+class DonneurStructureSerializer(serializers.Serializer):
+    """
+    Représente un donneur qui a interagi avec une structure
+    (soit via une sollicitation, soit via une participation).
+
+    """
+    id = serializers.IntegerField()
+    nom = serializers.CharField()
+    prenom = serializers.CharField()
+    groupe_sanguin = serializers.CharField()
+    ville = serializers.CharField()
+    region = serializers.CharField()
+    telephone = serializers.CharField()
+    initiales = serializers.CharField()
+    nombre_sollicitations = serializers.IntegerField()
+    nombre_participations = serializers.IntegerField()
+    derniere_interaction = serializers.DateTimeField()

@@ -1,12 +1,17 @@
 <template>
   <div class="participations-view">
 
+    <!-- ==========================================
+         EN-TÊTE
+    =========================================== -->
     <div class="page-heading">
       <h2>Participations</h2>
       <p>Suivez les participations liées à vos demandes.</p>
     </div>
 
-    <!-- Indicateurs -->
+    <!-- ==========================================
+         STATS
+    =========================================== -->
     <div class="stats-grid">
 
       <StatCard
@@ -49,14 +54,16 @@
 
     </div>
 
-    <!-- Filtres + Table -->
+    <!-- ==========================================
+         FILTRES + TABLEAU
+    =========================================== -->
     <AppCard padding="20px 24px" class="participations-card">
 
       <div class="filters-row">
 
         <AppInput
           id="search-participation"
-          v-model="filters.search"
+          v-model="recherche"
           placeholder="Rechercher un donneur..."
           class="search-input"
         >
@@ -69,36 +76,29 @@
         </AppInput>
 
         <AppSelect
-          id="request-filter"
-          v-model="filters.request"
-          placeholder="Toutes les demandes"
-          :options="requestOptions"
-        />
-
-        <AppSelect
           id="group-filter"
-          v-model="filters.group"
+          v-model="filtreGroupe"
           placeholder="Tous les groupes"
-          :options="groupOptions"
+          :options="groupeOptions"
         />
 
         <AppSelect
           id="status-filter"
-          v-model="filters.status"
+          v-model="filtreStatut"
           placeholder="Tous les statuts"
-          :options="statusOptions"
-        />
-
-        <AppInput
-          id="date-filter"
-          v-model="filters.date"
-          type="date"
-          class="date-input"
+          :options="statutOptions"
         />
 
       </div>
 
-      <div v-if="participations.length" class="participations-table-wrapper">
+      <!-- CHARGEMENT -->
+      <div v-if="loading" class="loading-state">
+        <div class="spinner-large"></div>
+        <p>Chargement des participations...</p>
+      </div>
+
+      <!-- TABLEAU -->
+      <div v-else-if="participationsPaginees.length" class="participations-table-wrapper">
         <table class="participations-table">
 
           <thead>
@@ -106,7 +106,7 @@
               <th>Donneur</th>
               <th>Demande</th>
               <th>Groupe</th>
-              <th>Date réponse</th>
+              <th>Date sollicitation</th>
               <th>Statut</th>
               <th>Date conf.</th>
               <th>Actions</th>
@@ -114,46 +114,48 @@
           </thead>
 
           <tbody>
-            <tr v-for="item in participations" :key="item.id">
+            <tr v-for="item in participationsPaginees" :key="item.id">
 
               <td>
                 <div class="donor-cell">
-                  <span class="donor-avatar">{{ item.donorInitials }}</span>
+                  <span class="donor-avatar">{{ item.donneur_initiales }}</span>
                   <div>
-                    <strong>{{ item.donorName }}</strong>
-                    <span class="donor-reference">{{ item.donorReference }}</span>
+                    <strong>{{ item.donneur_prenom }} {{ item.donneur_nom }}</strong>
+                    <span class="donor-reference">{{ item.donneur_ville }}</span>
                   </div>
                 </div>
               </td>
 
               <td>
-                <strong>{{ item.requestReference }}</strong>
-                <span class="request-service">{{ item.requestService }}</span>
+                <strong>{{ item.demande_reference }}</strong>
+                <span v-if="item.demande_message" class="request-service">
+                  {{ item.demande_message.slice(0, 30) }}{{ item.demande_message.length > 30 ? '...' : '' }}
+                </span>
               </td>
 
               <td>
-                <AppBadge variant="danger">{{ item.group }}</AppBadge>
+                <AppBadge variant="danger">{{ item.donneur_groupe_sanguin }}</AppBadge>
               </td>
 
               <td class="date-cell">
-                {{ item.responseDate }}
+                {{ formaterDate(item.date_creation) }}
               </td>
 
               <td>
-                <AppBadge :variant="statusVariant(item.status)">
-                  {{ statusLabel(item.status) }}
+                <AppBadge :variant="statusVariant(item.statut_affiche)">
+                  {{ statusLabel(item.statut_affiche) }}
                 </AppBadge>
               </td>
 
               <td class="date-cell">
-                {{ item.confirmationDate || '—' }}
+                {{ item.date_confirmation ? formaterDate(item.date_confirmation) : '—' }}
               </td>
 
               <td>
                 <div class="actions-cell">
 
                   <AppButton
-                    v-if="item.status === 'pending'"
+                    v-if="item.statut_affiche === 'pending' && item.statut === 'acceptee'"
                     variant="primary"
                     size="sm"
                     @click="confirmParticipation(item)"
@@ -161,44 +163,7 @@
                     Confirmer
                   </AppButton>
 
-                  <button
-                    v-if="item.status === 'confirmed'"
-                    type="button"
-                    class="action-icon"
-                    aria-label="Appeler le donneur"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M5 4H9L11 9L8.5 10.5C9.57 12.67 11.33 14.43 13.5 15.5L15 13L20 15V19C20 20.1 19.1 21 18 21C10.27 21 4 14.73 4 7C4 5.9 4.9 5 6 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </button>
-
-                  <button
-                    v-if="item.status === 'medical_refusal'"
-                    type="button"
-                    class="action-icon"
-                    aria-label="Relancer un autre donneur"
-                    @click="relaunchRequest(item)"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M4 12C4 7.58 7.58 4 12 4C15.31 4 18.17 6.01 19.36 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                      <path d="M20 12C20 16.42 16.42 20 12 20C8.69 20 5.83 17.99 4.64 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                      <path d="M19 5V9H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                      <path d="M5 19V15H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
-                  </button>
-
-                  <router-link
-                    :to="`/structure/demandes/${item.requestReference}`"
-                    class="action-icon"
-                    aria-label="Voir le dossier"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" stroke-width="2" />
-                      <path d="M9 8H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                      <path d="M9 12H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                      <path d="M9 16H12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                    </svg>
-                  </router-link>
+                  <span v-else class="no-action">—</span>
 
                 </div>
               </td>
@@ -209,6 +174,7 @@
         </table>
       </div>
 
+      <!-- ÉTAT VIDE -->
       <div v-else class="empty-state">
 
         <div class="empty-icon">
@@ -224,36 +190,46 @@
           dès qu'ils confirmeront leur disponibilité.
         </p>
 
-        <AppButton variant="primary" @click="goToRequests">
+        <AppButton variant="primary" to="/structure/demandes">
           <span class="drop-icon">🩸</span>
           Consulter vos demandes
         </AppButton>
 
       </div>
 
-      <div v-if="participations.length" class="participations-footer">
+      <!-- PAGINATION -->
+      <div v-if="participationsFiltrees.length > 0" class="participations-footer">
         <span>
-          Affichage de <strong>{{ pagination.from }} à {{ pagination.to }}</strong>
-          sur {{ pagination.total }} participations
+          Affichage de <strong>{{ participationsPaginees.length }}</strong>
+          sur <strong>{{ participationsFiltrees.length }}</strong>
+          participation{{ participationsFiltrees.length > 1 ? 's' : '' }}
         </span>
 
         <div class="pagination">
-          <button type="button" :disabled="pagination.page === 1" @click="goToPage(pagination.page - 1)">
-            &lt; Précédent
+          <button
+            type="button"
+            :disabled="pageActuelle === 1"
+            @click="changerPage(pageActuelle - 1)"
+          >
+            Précédent
           </button>
 
           <button
-            v-for="p in pagination.totalPages"
+            v-for="p in totalPages"
             :key="p"
             type="button"
-            :class="{ active: p === pagination.page }"
-            @click="goToPage(p)"
+            :class="{ active: p === pageActuelle }"
+            @click="changerPage(p)"
           >
             {{ p }}
           </button>
 
-          <button type="button" @click="goToPage(pagination.page + 1)">
-            Suivant &gt;
+          <button
+            type="button"
+            :disabled="pageActuelle === totalPages"
+            @click="changerPage(pageActuelle + 1)"
+          >
+            Suivant
           </button>
         </div>
       </div>
@@ -264,8 +240,8 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, watch } from 'vue'
+import api from '@/services/api'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
@@ -274,31 +250,56 @@ import AppBadge from '@/components/AppBadge.vue'
 import AppButton from '@/components/AppButton.vue'
 import StatCard from '@/components/StatCard.vue'
 
-const router = useRouter()
+// ==========================================
+// ÉTAT GLOBAL
+// ==========================================
 
-const stats = ref({
-  pending: 12,
-  confirmed: 45,
-  medicalRefusal: 2,
+const loading = ref(true)
+const participations = ref([])
+
+// ==========================================
+// CHARGEMENT
+// ==========================================
+
+async function chargerParticipations() {
+  loading.value = true
+  try {
+    const { data } = await api.get('/structure/participations/')
+    participations.value = data
+  } catch (e) {
+    participations.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(chargerParticipations)
+
+// ==========================================
+// STATS
+// ==========================================
+
+const stats = computed(() => {
+  const p = participations.value || []
+  return {
+    pending: p.filter(x => x.statut_affiche === 'pending').length,
+    confirmed: p.filter(x => x.statut_affiche === 'confirmed').length,
+    medicalRefusal: p.filter(x => x.statut_affiche === 'medical_refusal').length,
+  }
 })
 
-const filters = reactive({
-  search: '',
-  request: '',
-  group: '',
-  status: '',
-  date: '',
-})
+// ==========================================
+// FILTRES
+// ==========================================
 
-const requestOptions = [
-  { value: 'DS-2025-142', label: '#DS-2025-142' },
-  { value: 'DS-2025-141', label: '#DS-2025-141' },
-  { value: 'DS-2025-139', label: '#DS-2025-139' },
-]
+const recherche = ref('')
+const filtreGroupe = ref('')
+const filtreStatut = ref('')
 
-const groupOptions = [
-  { value: 'O-', label: 'O-' },
+const groupeOptions = [
+  { value: '', label: 'Tous les groupes' },
   { value: 'O+', label: 'O+' },
+  { value: 'O-', label: 'O-' },
   { value: 'A+', label: 'A+' },
   { value: 'A-', label: 'A-' },
   { value: 'B+', label: 'B+' },
@@ -307,104 +308,120 @@ const groupOptions = [
   { value: 'AB-', label: 'AB-' },
 ]
 
-const statusOptions = [
+const statutOptions = [
+  { value: '', label: 'Tous les statuts' },
   { value: 'pending', label: 'En attente' },
   { value: 'confirmed', label: 'Confirmée' },
-  { value: 'cancelled', label: 'Annulée' },
   { value: 'medical_refusal', label: 'Refus médical' },
+  { value: 'cancelled', label: 'Annulée' },
 ]
 
-const participations = ref([
-  {
-    id: 1,
-    donorInitials: 'AM',
-    donorName: 'Amadou M.',
-    donorReference: 'DON-SN-8492',
-    requestReference: '#DS-2025-142',
-    requestService: 'Maternité',
-    group: 'O-',
-    responseDate: 'Auj., 11:42',
-    status: 'pending',
-    confirmationDate: null,
-  },
-  {
-    id: 2,
-    donorInitials: 'SD',
-    donorName: 'Samba D.',
-    donorReference: 'DON-SN-7319',
-    requestReference: '#DS-2025-141',
-    requestService: 'Réanimation',
-    group: 'B+',
-    responseDate: 'Auj., 10:15',
-    status: 'confirmed',
-    confirmationDate: 'Auj., 10:25',
-  },
-  {
-    id: 3,
-    donorInitials: 'FF',
-    donorName: 'Fatou F.',
-    donorReference: 'DON-SN-9022',
-    requestReference: '#DS-2025-139',
-    requestService: 'Chirurgie',
-    group: 'A+',
-    responseDate: 'Hier, 15:30',
-    status: 'cancelled',
-    confirmationDate: null,
-  },
-  {
-    id: 4,
-    donorInitials: 'IK',
-    donorName: 'Ibrahima K.',
-    donorReference: 'DON-SN-5120',
-    requestReference: '#DS-2025-139',
-    requestService: 'Chirurgie',
-    group: 'AB+',
-    responseDate: '02 Mai, 09:10',
-    status: 'medical_refusal',
-    confirmationDate: null,
-  },
-])
+// ==========================================
+// FILTRAGE
+// ==========================================
 
-const pagination = reactive({
-  page: 1,
-  from: 1,
-  to: 4,
-  total: 62,
-  totalPages: 3,
+const participationsFiltrees = computed(() => {
+  let resultat = participations.value || []
+
+   // Recherche (nom, prénom, ville, référence demande, groupe sanguin)
+  const r = recherche.value.trim().toLowerCase()
+  if (r) {
+    resultat = resultat.filter(p =>
+      (p.donneur_nom || '').toLowerCase().includes(r) ||
+      (p.donneur_prenom || '').toLowerCase().includes(r) ||
+      (p.donneur_ville || '').toLowerCase().includes(r) ||
+      (p.demande_reference || '').toLowerCase().includes(r) ||
+      (p.demande_message || '').toLowerCase().includes(r) ||
+      (p.donneur_groupe_sanguin || '').toLowerCase().includes(r)
+    )
+  }
+
+  // Groupe (basé sur le groupe du donneur)
+  if (filtreGroupe.value) {
+    resultat = resultat.filter(p => p.donneur_groupe_sanguin === filtreGroupe.value)
+  }
+
+  // Statut
+  if (filtreStatut.value) {
+    resultat = resultat.filter(p => p.statut_affiche === filtreStatut.value)
+  }
+
+  return resultat
 })
+
+// ==========================================
+// PAGINATION
+// ==========================================
+
+const pageActuelle = ref(1)
+const elementsParPage = 10
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(participationsFiltrees.value.length / elementsParPage))
+})
+
+const participationsPaginees = computed(() => {
+  const debut = (pageActuelle.value - 1) * elementsParPage
+  return participationsFiltrees.value.slice(debut, debut + elementsParPage)
+})
+
+function changerPage(n) {
+  if (n < 1 || n > totalPages.value) return
+  pageActuelle.value = n
+}
+
+watch([recherche, filtreGroupe, filtreStatut], () => {
+  pageActuelle.value = 1
+})
+
+// ==========================================
+// HELPERS
+// ==========================================
+
+function formaterDate(dateIso) {
+  if (!dateIso) return '—'
+  const date = new Date(dateIso)
+  const maintenant = new Date()
+  const diffHeures = (maintenant - date) / (1000 * 60 * 60)
+
+  if (diffHeures < 24) {
+    const h = date.getHours().toString().padStart(2, '0')
+    const m = date.getMinutes().toString().padStart(2, '0')
+    return `Auj. ${h}:${m}`
+  }
+
+  const options = { day: '2-digit', month: 'short', year: 'numeric' }
+  return date.toLocaleDateString('fr-FR', options)
+}
 
 function statusVariant(status) {
   if (status === 'pending') return 'warning'
   if (status === 'confirmed') return 'success'
   if (status === 'medical_refusal') return 'danger'
-  return 'default' // cancelled
+  return 'default'
 }
 
 function statusLabel(status) {
   if (status === 'pending') return 'En attente'
   if (status === 'confirmed') return 'Confirmée'
   if (status === 'medical_refusal') return 'Refus médical'
-  return 'Annulée'
+  if (status === 'cancelled') return 'Annulée'
+  return status
 }
 
-function confirmParticipation(item) {
-  item.status = 'confirmed'
-  item.confirmationDate = "Auj., à l'instant"
-  // Plus tard : appel API PATCH /participations/:id
-}
+// ==========================================
+// ACTIONS
+// ==========================================
 
-function relaunchRequest(item) {
-  router.push(`/structure/demandes/${item.requestReference.replace('#', '')}`)
-}
-
-function goToPage(page) {
-  if (page < 1 || page > pagination.totalPages) return
-  pagination.page = page
-  // Plus tard : appel API paginé GET /participations?page=...
-}
-
-function goToRequests() {
-  router.push('/structure/demandes')
+async function confirmParticipation(item) {
+  try {
+    // On confirme la participation liée à cette sollicitation
+    await api.post(`/sollicitations/${item.id}/confirmer/`)
+    // On recharge la liste pour refléter le changement
+    await chargerParticipations()
+  } catch (e) {
+    // Silencieux : on pourrait afficher une erreur à l'utilisateur
+  }
 }
 </script>
 
@@ -417,44 +434,32 @@ function goToRequests() {
 
 .page-heading h2 {
   margin: 0 0 6px;
-
   color: var(--bloodsen-dark);
-
   font-size: 30px;
   font-weight: 700;
 }
 
 .page-heading p {
   margin: 0;
-
   max-width: 720px;
-
   color: #6b7280;
-
   font-size: 14px;
   line-height: 1.5;
 }
 
-/* ========================================
-   INDICATEURS
-======================================== */
-
+/* STATS */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
 
-/* ========================================
-   FILTRES
-======================================== */
-
+/* FILTRES */
 .filters-row {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-
   margin-bottom: 20px;
 }
 
@@ -463,15 +468,37 @@ function goToRequests() {
   flex: 1;
 }
 
-.filters-row :deep(.select-group),
-.filters-row :deep(.date-input) {
-  min-width: 150px;
+.filters-row :deep(.select-group) {
+  min-width: 170px;
 }
 
-/* ========================================
-   TABLE
-======================================== */
+/* CHARGEMENT */
+.loading-state {
+  padding: 60px 24px;
+  text-align: center;
+}
 
+.loading-state p {
+  margin: 16px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.spinner-large {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e6eaf0;
+  border-top-color: var(--bloodsen-red);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* TABLE */
 .participations-table-wrapper {
   overflow-x: auto;
 }
@@ -483,29 +510,21 @@ function goToRequests() {
 
 .participations-table th {
   padding: 12px 20px;
-
   color: #8a94a3;
-
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-align: left;
-
   white-space: nowrap;
 }
 
 .participations-table td {
   padding: 16px 20px;
-
   border-top: 1px solid #f0f1f3;
-
   color: var(--bloodsen-dark);
   font-size: 14px;
-
   vertical-align: middle;
-
-  white-space: nowrap;
 }
 
 .donor-cell {
@@ -519,15 +538,11 @@ function goToRequests() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-
   width: 38px;
   height: 38px;
-
   border-radius: 50%;
-
   background-color: #f1f3f5;
   color: var(--bloodsen-dark);
-
   font-size: 12px;
   font-weight: 700;
 }
@@ -540,20 +555,13 @@ function goToRequests() {
 .donor-reference {
   display: block;
   margin-top: 2px;
-
   color: #8a94a3;
   font-size: 12.5px;
-}
-
-.participations-table td strong {
-  display: block;
-  font-size: 14px;
 }
 
 .request-service {
   display: block;
   margin-top: 2px;
-
   color: #8a94a3;
   font-size: 12.5px;
 }
@@ -561,6 +569,7 @@ function goToRequests() {
 .date-cell {
   color: #4a5568;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .actions-cell {
@@ -569,40 +578,16 @@ function goToRequests() {
   gap: 14px;
 }
 
-.action-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border: none;
-  background: transparent;
-
-  color: #6b7280;
-
-  cursor: pointer;
-  text-decoration: none;
+.no-action {
+  color: #c5cdd8;
 }
 
-.action-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.action-icon:hover {
-  color: var(--bloodsen-red);
-}
-
-/* ========================================
-   ÉTAT VIDE
-======================================== */
-
+/* ÉTAT VIDE */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-
   padding: 56px 24px;
-
   text-align: center;
 }
 
@@ -610,13 +595,10 @@ function goToRequests() {
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 64px;
   height: 64px;
   margin-bottom: 20px;
-
   border-radius: 50%;
-
   background-color: #fdecec;
   color: var(--bloodsen-red);
 }
@@ -628,9 +610,7 @@ function goToRequests() {
 
 .empty-state h3 {
   margin: 0 0 10px;
-
   color: var(--bloodsen-dark);
-
   font-size: 18px;
   font-weight: 700;
 }
@@ -638,9 +618,7 @@ function goToRequests() {
 .empty-state p {
   max-width: 480px;
   margin: 0 0 24px;
-
   color: #6b7280;
-
   font-size: 14px;
   line-height: 1.6;
 }
@@ -649,20 +627,14 @@ function goToRequests() {
   margin-right: 6px;
 }
 
-/* ========================================
-   FOOTER / PAGINATION
-======================================== */
-
+/* FOOTER */
 .participations-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-
   gap: 12px;
-
-  padding: 16px 20px 0;
-
+  padding: 16px 0 0;
   color: #6b7280;
   font-size: 13px;
 }
@@ -675,16 +647,12 @@ function goToRequests() {
 
 .pagination button {
   padding: 6px 12px;
-
   border: 1px solid #d9dde2;
   border-radius: 6px;
-
   background-color: #ffffff;
   color: var(--bloodsen-dark);
-
   font-family: inherit;
   font-size: 13px;
-
   cursor: pointer;
 }
 
@@ -699,10 +667,7 @@ function goToRequests() {
   cursor: not-allowed;
 }
 
-/* ========================================
-   RESPONSIVE
-======================================== */
-
+/* RESPONSIVE */
 @media (max-width: 1200px) {
   .stats-grid {
     grid-template-columns: 1fr;
@@ -710,7 +675,6 @@ function goToRequests() {
 }
 
 @media (max-width: 700px) {
-
   .page-heading h2 {
     font-size: 24px;
   }
@@ -721,8 +685,7 @@ function goToRequests() {
   }
 
   .filters-row :deep(.search-input),
-  .filters-row :deep(.select-group),
-  .filters-row :deep(.date-input) {
+  .filters-row :deep(.select-group) {
     min-width: 100%;
     width: 100%;
   }
@@ -739,6 +702,5 @@ function goToRequests() {
   .empty-state {
     padding: 40px 20px;
   }
-
 }
 </style>

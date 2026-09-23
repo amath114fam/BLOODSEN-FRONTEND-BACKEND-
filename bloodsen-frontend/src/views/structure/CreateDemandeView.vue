@@ -41,10 +41,11 @@
           <div class="field-block">
             <AppSelect
               id="blood-group"
-              v-model="form.bloodGroup"
+              v-model="form.groupe_sanguin"
               label="Groupe sanguin recherché *"
               placeholder="Sélectionner un groupe"
               :options="bloodGroupOptions"
+              :error="erreursBackend.groupe_sanguin?.[0] || ''"
             />
             <p v-if="selectedBloodGroupHint" class="field-hint">
               {{ selectedBloodGroupHint }}
@@ -54,103 +55,39 @@
           <div class="field-block">
             <AppSelect
               id="urgency-level"
-              v-model="form.urgency"
+              v-model="form.urgence"
               label="Niveau d'urgence clinique *"
               placeholder="Sélectionner un niveau"
               :options="urgencyOptions"
+              :error="erreursBackend.urgence?.[0] || ''"
             />
-            <p v-if="selectedUrgencyHint" class="field-hint">
-              {{ selectedUrgencyHint }}
-            </p>
           </div>
+
+          <AppInput
+            id="quantite"
+            v-model.number="form.quantite"
+            type="number"
+            label="Nombre de poches *"
+            placeholder="1"
+            :min="1"
+            required
+            :error="erreursBackend.quantite?.[0] || ''"
+          />
 
         </div>
 
       </AppCard>
 
       <!-- ============================
-           ÉTAPE 2 — LIEU DE COLLECTE
+           ÉTAPE 2 — DATE LIMITE
       ============================= -->
       <AppCard padding="24px" class="form-section">
 
         <div class="section-header">
           <span class="step-number">2</span>
           <div>
-            <h3>Lieu de collecte &amp; Périmètre</h3>
-            <p>Localisation de la banque de sang et ciblage kilométrique des donneurs.</p>
-          </div>
-        </div>
-
-        <div class="section-divider"></div>
-
-        <div class="section-grid two-cols">
-
-          <AppInput
-            id="requesting-facility"
-            v-model="form.facility"
-            label="Établissement demandeur"
-            disabled
-            hint="Structure certifiée sous contrat national CNTS"
-          >
-            <template #icon>
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="2" />
-                <path d="M8 11V8C8 5.79 9.79 4 12 4C14.21 4 16 5.79 16 8V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-              </svg>
-            </template>
-          </AppInput>
-
-          <AppSelect
-            id="requesting-service"
-            v-model="form.service"
-            label="Service / Unité de soins *"
-            placeholder="Sélectionner un service"
-            :options="serviceOptions"
-          />
-
-        </div>
-
-        <div class="map-block">
-
-          <div class="map-block-header">
-            <span>Point d'orientation &amp; Commune</span>
-            <span class="map-location-label">{{ form.commune }}</span>
-          </div>
-
-          <!--
-            ⚠️ Placeholder visuel pour l'instant (pas de carte interactive branchée).
-            À remplacer plus tard par une vraie intégration (Leaflet / Google Maps).
-          -->
-          <div class="map-placeholder">
-            <div class="map-pin">📍</div>
-
-            <div class="map-address-card">
-              <span class="map-pin-small">📍</span>
-              <div>
-                <strong>{{ form.address }}</strong>
-                <span class="map-address-detail">{{ form.addressDetail }}</span>
-              </div>
-              <span class="map-active-dot">
-                <span class="dot"></span>
-                Point d'accueil actif
-              </span>
-            </div>
-          </div>
-
-        </div>
-
-      </AppCard>
-
-      <!-- ============================
-           ÉTAPE 3 — INFOS & MESSAGE
-      ============================= -->
-      <AppCard padding="24px" class="form-section">
-
-        <div class="section-header">
-          <span class="step-number">3</span>
-          <div>
-            <h3>Informations &amp; Message d'alerte</h3>
-            <p>Délai opérationnel et communication directe transmise aux donneurs.</p>
+            <h3>Délai opérationnel</h3>
+            <p>Date et heure limites avant lesquelles la demande doit être satisfaite.</p>
           </div>
         </div>
 
@@ -164,17 +101,35 @@
             type="date"
             label="Date limite *"
             required
+            :error="erreursBackend.date_limite?.[0] || ''"
           />
 
           <AppInput
             id="deadline-time"
             v-model="form.deadlineTime"
             type="time"
-            label="Heure limite impérative *"
+            label="Heure limite *"
             required
           />
 
         </div>
+
+      </AppCard>
+
+      <!-- ============================
+           ÉTAPE 3 — MESSAGE
+      ============================= -->
+      <AppCard padding="24px" class="form-section">
+
+        <div class="section-header">
+          <span class="step-number">3</span>
+          <div>
+            <h3>Message aux donneurs</h3>
+            <p>Communication directe transmise aux donneurs sollicités.</p>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
 
         <div class="field-block textarea-block">
           <AppTextarea
@@ -183,6 +138,7 @@
             label="Message notifié aux donneurs"
             :rows="4"
             :maxlength="messageMaxLength"
+            :error="erreursBackend.message?.[0] || ''"
           />
           <span class="char-counter">
             {{ form.message.length }} / {{ messageMaxLength }} caractères
@@ -194,10 +150,15 @@
       <!-- ============================
            ACTIONS
       ============================= -->
+      <div v-if="erreurGlobale" class="form-error">
+        {{ erreurGlobale }}
+      </div>
+
       <div class="form-actions">
         <AppButton
           type="button"
           variant="outline"
+          :disabled="loading"
           @click="handleCancel"
         >
           Annuler
@@ -206,8 +167,15 @@
         <AppButton
           type="submit"
           variant="primary"
+          :disabled="loading"
         >
-          Créer la demande
+          <template v-if="loading">
+            <span class="spinner"></span>
+            Création...
+          </template>
+          <template v-else>
+            Créer la demande
+          </template>
         </AppButton>
       </div>
 
@@ -215,9 +183,11 @@
 
   </div>
 </template>
+
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useDemandesStore } from '@/stores/demandes'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
@@ -226,21 +196,30 @@ import AppTextarea from '@/components/AppTextarea.vue'
 import AppButton from '@/components/AppButton.vue'
 
 const router = useRouter()
+const demandesStore = useDemandesStore()
 
 const messageMaxLength = 280
 
+// ==========================================
+// ÉTAT DU FORMULAIRE
+// ==========================================
+
 const form = reactive({
-  bloodGroup: 'O-',
-  urgency: 'vitale',
-  facility: 'CHNU de Fann — Dakar',
-  service: '',
-  commune: 'Dakar-Plateau / Fann-Point E',
-  address: 'Avenue Cheikh Anta Diop, Dakar',
-  addressDetail: 'Pavillon Maternité • Coordonnées GPS enregistrées',
+  groupe_sanguin: '',
+  urgence: 'urgent',
+  quantite: 1,
   deadlineDate: '',
   deadlineTime: '16:00',
   message: '',
 })
+
+const loading = ref(false)
+const erreurGlobale = ref('')
+const erreursBackend = ref({})
+
+// ==========================================
+// OPTIONS
+// ==========================================
 
 const bloodGroupOptions = [
   { value: 'O-', label: 'O- — Universel' },
@@ -259,37 +238,51 @@ const urgencyOptions = [
   { value: 'programme', label: 'Programmé' },
 ]
 
-const urgencyDescriptions = {
-  vitale: 'Alerte SMS instantanée & push prioritaire direct.',
-  urgent: 'Intervention chirurgicale imminente.',
-  programme: 'Mobilisation planifiée sous 24 à 72 heures.',
+// ==========================================
+// SOUMISSION
+// ==========================================
+
+async function handleSubmit() {
+  erreurGlobale.value = ''
+  erreursBackend.value = {}
+
+  // 1. Vérifier que la date et l'heure sont remplies
+  if (!form.deadlineDate || !form.deadlineTime) {
+    erreurGlobale.value = 'La date et l\'heure limites sont obligatoires.'
+    return
+  }
+
+  // 2. Construire la date_limite au format ISO (YYYY-MM-DDTHH:MM:SS)
+  const dateLimiteISO = `${form.deadlineDate}T${form.deadlineTime}:00`
+
+  // 3. Construire les données à envoyer
+  const donnees = {
+    groupe_sanguin: form.groupe_sanguin,
+    urgence: form.urgence,
+    quantite: form.quantite,
+    date_limite: dateLimiteISO,
+    message: form.message,
+  }
+
+  // 4. Appel API via le store
+  loading.value = true
+  try {
+    await demandesStore.creerDemande(donnees)
+    // Succès → redirection vers la liste des demandes
+    router.push('/structure/demandes')
+  } catch (error) {
+    if (error.response?.status === 400) {
+      erreursBackend.value = error.response.data
+    } else {
+      erreurGlobale.value = 'Une erreur est survenue. Veuillez réessayer.'
+    }
+  } finally {
+    loading.value = false
+  }
 }
-
-const serviceOptions = [
-  { value: 'maternite', label: 'Maternité & Néonatologie (Bloc obstétrical)' },
-  { value: 'reanimation', label: 'Service Réanimation' },
-  { value: 'chirurgie', label: 'Chirurgie Cardiovasculaire' },
-  { value: 'urgences', label: "Service d'Urgences" },
-]
-
-const selectedBloodGroupHint = computed(() => {
-  const option = bloodGroupOptions.find((o) => o.value === form.bloodGroup)
-  return option ? `Groupe sélectionné : ${option.label}` : ''
-})
-
-const selectedUrgencyHint = computed(() => {
-  return urgencyDescriptions[form.urgency] || ''
-})
 
 function handleCancel() {
   router.push('/structure/demandes')
-}
-
-function handleSubmit() {
-  console.log('Nouvelle demande de sang :', form)
-
-  // Plus tard : appel API POST /demandes puis redirection
-  // router.push('/structure/demandes')
 }
 </script>
 

@@ -1,15 +1,27 @@
 <template>
   <div class="donors-view">
 
+    <!-- ==========================================
+         EN-TÊTE
+    =========================================== -->
     <div class="page-heading-row">
       <div class="page-heading">
         <h2>Donneurs</h2>
         <p>Suivez les donneurs ayant répondu à vos demandes.</p>
       </div>
 
+      <AppButton
+        variant="primary"
+        to="/structure/demandes/creer"
+      >
+        <span class="plus-icon">+</span>
+        Créer une demande
+      </AppButton>
     </div>
 
-    <!-- Indicateurs -->
+    <!-- ==========================================
+         STATS
+    =========================================== -->
     <div class="stats-grid">
 
       <StatCard
@@ -53,15 +65,17 @@
 
     </div>
 
-    <!-- Filtres + Table -->
+    <!-- ==========================================
+         FILTRES + TABLEAU
+    =========================================== -->
     <AppCard padding="20px 24px" class="donors-card">
 
       <div class="filters-row">
 
         <AppInput
           id="search-donor"
-          v-model="filters.search"
-          placeholder="Rechercher par identifiant donneur, zone géographique, référence demande..."
+          v-model="recherche"
+          placeholder="Rechercher par nom, ville..."
           class="search-input"
         >
           <template #icon>
@@ -74,35 +88,28 @@
 
         <AppSelect
           id="group-filter"
-          v-model="filters.group"
+          v-model="filtreGroupe"
           placeholder="Tous les groupes"
-          :options="groupOptions"
-        />
-
-        <AppSelect
-          id="status-filter"
-          v-model="filters.status"
-          placeholder="Tous statuts"
-          :options="statusOptions"
+          :options="groupeOptions"
         />
 
         <AppSelect
           id="participation-filter"
-          v-model="filters.participation"
+          v-model="filtreParticipation"
           placeholder="Toutes participations"
           :options="participationOptions"
         />
 
-        <AppSelect
-          id="request-filter"
-          v-model="filters.request"
-          placeholder="Toutes demandes"
-          :options="requestOptions"
-        />
-
       </div>
 
-      <div v-if="donors.length" class="donors-table-wrapper">
+      <!-- CHARGEMENT -->
+      <div v-if="loading" class="loading-state">
+        <div class="spinner-large"></div>
+        <p>Chargement des donneurs...</p>
+      </div>
+
+      <!-- TABLEAU -->
+      <div v-else-if="donneursPaginees.length" class="donors-table-wrapper">
         <table class="donors-table">
 
           <thead>
@@ -110,28 +117,46 @@
               <th>Donneur</th>
               <th>Téléphone</th>
               <th>Groupe sanguin</th>
+              <th>Sollicitations</th>
+              <th>Dons effectués</th>
+              <th>Dernière interaction</th>
             </tr>
           </thead>
 
           <tbody>
-            <tr v-for="donor in donors" :key="donor.id">
+            <tr v-for="donor in donneursPaginees" :key="donor.id">
 
               <td>
                 <div class="donor-cell">
-                  <span class="donor-avatar">{{ donor.initials }}</span>
+                  <span class="donor-avatar">{{ donor.initiales }}</span>
                   <div>
-                    <strong>{{ donor.name }}</strong>
+                    <strong>{{ donor.prenom }} {{ donor.nom }}</strong>
                     <span class="donor-reference">
-                      {{ donor.reference }} • {{ donor.location }}
+                      {{ donor.ville }}, {{ donor.region }}
                     </span>
                   </div>
                 </div>
               </td>
 
-              <td>{{ donor.phone }}</td>
+              <td>{{ donor.telephone }}</td>
 
               <td>
-                <AppBadge variant="danger">{{ donor.bloodGroup }}</AppBadge>
+                <AppBadge variant="danger">{{ donor.groupe_sanguin }}</AppBadge>
+              </td>
+
+              <td class="count-cell">
+                {{ donor.nombre_sollicitations }}
+              </td>
+
+              <td class="count-cell">
+                <span v-if="donor.nombre_participations > 0" class="success-count">
+                  {{ donor.nombre_participations }}
+                </span>
+                <span v-else class="no-count">—</span>
+              </td>
+
+              <td class="date-cell">
+                {{ formaterDate(donor.derniere_interaction) }}
               </td>
 
             </tr>
@@ -140,6 +165,7 @@
         </table>
       </div>
 
+      <!-- ÉTAT VIDE -->
       <div v-else class="empty-state">
 
         <div class="empty-icon">
@@ -159,12 +185,12 @@
         </p>
 
         <div class="empty-actions">
-          <AppButton variant="outline" @click="goToRequests">
+          <AppButton variant="outline" to="/structure/demandes">
             <span class="drop-icon">🩸</span>
             Consulter vos demandes en cours
           </AppButton>
 
-          <AppButton variant="primary" @click="goToCreateRequest">
+          <AppButton variant="primary" to="/structure/demandes/creer">
             <span class="plus-icon">+</span>
             Créer une demande
           </AppButton>
@@ -172,29 +198,39 @@
 
       </div>
 
-      <div v-if="donors.length" class="donors-footer">
+      <!-- PAGINATION -->
+      <div v-if="donneursFiltres.length > 0" class="donors-footer">
         <span>
-          Affichage de <strong>{{ pagination.from }} à {{ pagination.to }}</strong>
-          sur {{ pagination.total }} donneurs mobilisés
+          Affichage de <strong>{{ donneursPaginees.length }}</strong>
+          sur <strong>{{ donneursFiltres.length }}</strong>
+          donneur{{ donneursFiltres.length > 1 ? 's' : '' }}
         </span>
 
         <div class="pagination">
-          <button type="button" :disabled="pagination.page === 1" @click="goToPage(pagination.page - 1)">
-            &lt; Précédent
+          <button
+            type="button"
+            :disabled="pageActuelle === 1"
+            @click="changerPage(pageActuelle - 1)"
+          >
+            Précédent
           </button>
 
           <button
-            v-for="p in pagination.totalPages"
+            v-for="p in totalPages"
             :key="p"
             type="button"
-            :class="{ active: p === pagination.page }"
-            @click="goToPage(p)"
+            :class="{ active: p === pageActuelle }"
+            @click="changerPage(p)"
           >
             {{ p }}
           </button>
 
-          <button type="button" @click="goToPage(pagination.page + 1)">
-            Suivant &gt;
+          <button
+            type="button"
+            :disabled="pageActuelle === totalPages"
+            @click="changerPage(pageActuelle + 1)"
+          >
+            Suivant
           </button>
         </div>
       </div>
@@ -203,9 +239,10 @@
 
   </div>
 </template>
+
 <script setup>
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, watch } from 'vue'
+import api from '@/services/api'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
@@ -214,25 +251,53 @@ import AppBadge from '@/components/AppBadge.vue'
 import AppButton from '@/components/AppButton.vue'
 import StatCard from '@/components/StatCard.vue'
 
-const router = useRouter()
+// ==========================================
+// ÉTAT GLOBAL
+// ==========================================
 
-const stats = ref({
-  solicited: 148,
-  positiveResponses: 38,
-  completedDonations: 24,
+const loading = ref(true)
+const donneurs = ref([])
+
+// ==========================================
+// CHARGEMENT
+// ==========================================
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get('/structure/donneurs/')
+    donneurs.value = data
+  } catch (e) {
+    donneurs.value = []
+  } finally {
+    loading.value = false
+  }
 })
 
-const filters = reactive({
-  search: '',
-  group: '',
-  status: '',
-  participation: '',
-  request: '',
+// ==========================================
+// STATS (calculées depuis la liste)
+// ==========================================
+
+const stats = computed(() => {
+  const d = donneurs.value || []
+  return {
+    solicited: d.length,
+    positiveResponses: d.filter(x => x.nombre_participations > 0).length,
+    completedDonations: d.reduce((sum, x) => sum + (x.nombre_participations || 0), 0),
+  }
 })
 
-const groupOptions = [
-  { value: 'O-', label: 'O-' },
+// ==========================================
+// FILTRES
+// ==========================================
+
+const recherche = ref('')
+const filtreGroupe = ref('')
+const filtreParticipation = ref('')
+
+const groupeOptions = [
+  { value: '', label: 'Tous les groupes' },
   { value: 'O+', label: 'O+' },
+  { value: 'O-', label: 'O-' },
   { value: 'A+', label: 'A+' },
   { value: 'A-', label: 'A-' },
   { value: 'B+', label: 'B+' },
@@ -241,50 +306,89 @@ const groupOptions = [
   { value: 'AB-', label: 'AB-' },
 ]
 
-const statusOptions = [
-  { value: 'active', label: 'Actif' },
-  { value: 'inactive', label: 'Inactif' },
-]
-
 const participationOptions = [
-  { value: 'confirmed', label: 'Confirmée' },
-  { value: 'pending', label: 'En attente' },
+  { value: '', label: 'Toutes participations' },
+  { value: 'avec_don', label: 'Avec don confirmé' },
+  { value: 'sans_don', label: 'Sans don confirmé' },
 ]
 
-const requestOptions = [
-  { value: 'DS-2025-142', label: '#DS-2025-142' },
-  { value: 'DS-2025-141', label: '#DS-2025-141' },
-]
+// ==========================================
+// FILTRAGE
+// ==========================================
 
-const donors = ref([
-  { id: 1, initials: 'AS', name: 'Abdoulaye Sall', reference: 'DON-SN-8492', location: 'Dakar-Fann', phone: '+221 77 654 21 89', bloodGroup: 'O-' },
-  { id: 2, initials: 'MD', name: 'Mamadou Diop', reference: 'DON-SN-7319', location: 'Grand Yoff', phone: '+221 78 412 90 33', bloodGroup: 'B+' },
-  { id: 3, initials: 'FF', name: 'Fatou Fall', reference: 'DON-SN-9022', location: 'Mermoz', phone: '+221 76 890 14 55', bloodGroup: 'A+' },
-  { id: 4, initials: 'IB', name: 'Ibrahima Ba', reference: 'DON-SN-6105', location: 'Médina', phone: '+221 77 321 09 87', bloodGroup: 'O+' },
-  { id: 5, initials: 'PK', name: 'Papa Kane', reference: 'DON-SN-5120', location: 'Ouakam', phone: '+221 70 543 88 12', bloodGroup: 'AB+' },
-  { id: 6, initials: 'SN', name: 'Seynabou Ndiaye', reference: 'DON-SN-3904', location: 'Almadies', phone: '+221 77 234 56 78', bloodGroup: 'A-' },
-])
+const donneursFiltres = computed(() => {
+  let resultat = donneurs.value || []
 
-const pagination = reactive({
-  page: 1,
-  from: 1,
-  to: 6,
-  total: 38,
-  totalPages: 3,
+  // Recherche
+  const r = recherche.value.trim().toLowerCase()
+  if (r) {
+    resultat = resultat.filter(d =>
+      (d.nom || '').toLowerCase().includes(r) ||
+      (d.prenom || '').toLowerCase().includes(r) ||
+      (d.ville || '').toLowerCase().includes(r) ||
+      (d.region || '').toLowerCase().includes(r)
+    )
+  }
+
+  // Groupe
+  if (filtreGroupe.value) {
+    resultat = resultat.filter(d => d.groupe_sanguin === filtreGroupe.value)
+  }
+
+  // Participation
+  if (filtreParticipation.value === 'avec_don') {
+    resultat = resultat.filter(d => d.nombre_participations > 0)
+  } else if (filtreParticipation.value === 'sans_don') {
+    resultat = resultat.filter(d => d.nombre_participations === 0)
+  }
+
+  return resultat
 })
 
-function goToPage(page) {
-  if (page < 1 || page > pagination.totalPages) return
-  pagination.page = page
-  // Plus tard : appel API paginé GET /donneurs?page=...
+// ==========================================
+// PAGINATION
+// ==========================================
+
+const pageActuelle = ref(1)
+const elementsParPage = 10
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(donneursFiltres.value.length / elementsParPage))
+})
+
+const donneursPaginees = computed(() => {
+  const debut = (pageActuelle.value - 1) * elementsParPage
+  return donneursFiltres.value.slice(debut, debut + elementsParPage)
+})
+
+function changerPage(n) {
+  if (n < 1 || n > totalPages.value) return
+  pageActuelle.value = n
 }
 
-function goToCreateRequest() {
-  router.push('/structure/demandes/creer')
-}
+// Reset la page quand les filtres changent
+watch([recherche, filtreGroupe, filtreParticipation], () => {
+  pageActuelle.value = 1
+})
 
-function goToRequests() {
-  router.push('/structure/demandes')
+// ==========================================
+// HELPERS
+// ==========================================
+
+function formaterDate(dateIso) {
+  if (!dateIso) return '—'
+  const date = new Date(dateIso)
+  const maintenant = new Date()
+  const diffHeures = (maintenant - date) / (1000 * 60 * 60)
+
+  if (diffHeures < 24) {
+    const h = date.getHours().toString().padStart(2, '0')
+    const m = date.getMinutes().toString().padStart(2, '0')
+    return `Aujourd'hui à ${h}:${m}`
+  }
+
+  const options = { day: '2-digit', month: 'short', year: 'numeric' }
+  return date.toLocaleDateString('fr-FR', options)
 }
 </script>
 
@@ -295,12 +399,44 @@ function goToRequests() {
   gap: 20px;
 }
 
+/* ========================================
+   EN-TÊTE
+======================================== */
+
 .page-heading-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+.page-heading h2 {
+  margin: 0 0 6px;
+
+  color: var(--bloodsen-dark);
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.page-heading p {
+  margin: 0;
+
+  max-width: 720px;
+
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.plus-icon {
+  margin-right: 6px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.drop-icon {
+  margin-right: 6px;
 }
 
 /* ========================================
@@ -332,32 +468,44 @@ function goToRequests() {
 }
 
 .filters-row :deep(.select-group) {
-  min-width: 150px;
+  min-width: 170px;
+}
+
+/* ========================================
+   ÉTAT DE CHARGEMENT
+======================================== */
+
+.loading-state {
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.loading-state p {
+  margin: 16px 0 0;
+
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.spinner-large {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+
+  border: 3px solid #e6eaf0;
+  border-top-color: var(--bloodsen-red);
+  border-radius: 50%;
+
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ========================================
    TABLE
 ======================================== */
-
-.page-heading h2 {
-  margin: 0 0 6px;
-
-  color: var(--bloodsen-dark);
-
-  font-size: 30px;
-  font-weight: 700;
-}
-
-.page-heading p {
-  margin: 0;
-
-  max-width: 720px;
-
-  color: #6b7280;
-
-  font-size: 14px;
-  line-height: 1.5;
-}
 
 .donors-table-wrapper {
   overflow-x: auto;
@@ -372,13 +520,11 @@ function goToRequests() {
   padding: 12px 20px;
 
   color: #8a94a3;
-
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-align: left;
-
   white-space: nowrap;
 }
 
@@ -430,6 +576,26 @@ function goToRequests() {
   font-size: 12.5px;
 }
 
+.count-cell {
+  text-align: center;
+  font-weight: 600;
+}
+
+.success-count {
+  color: #1e9e5a;
+  font-weight: 700;
+}
+
+.no-count {
+  color: #c5cdd8;
+}
+
+.date-cell {
+  color: #4a5568;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 /* ========================================
    ÉTAT VIDE
 ======================================== */
@@ -468,7 +634,6 @@ function goToRequests() {
   margin: 0 0 10px;
 
   color: var(--bloodsen-dark);
-
   font-size: 18px;
   font-weight: 700;
 }
@@ -478,7 +643,6 @@ function goToRequests() {
   margin: 0 0 24px;
 
   color: #6b7280;
-
   font-size: 14px;
   line-height: 1.6;
 }
@@ -488,15 +652,6 @@ function goToRequests() {
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
-}
-
-.plus-icon {
-  margin-right: 6px;
-  font-size: 16px;
-}
-
-.drop-icon {
-  margin-right: 6px;
 }
 
 /* ========================================
@@ -511,7 +666,7 @@ function goToRequests() {
 
   gap: 12px;
 
-  padding: 16px 20px 0;
+  padding: 16px 0 0;
 
   color: #6b7280;
   font-size: 13px;

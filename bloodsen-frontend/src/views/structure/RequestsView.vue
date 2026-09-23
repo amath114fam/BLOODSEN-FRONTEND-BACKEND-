@@ -1,347 +1,532 @@
 <template>
-  <div class="create-request-view">
+  <div class="requests-view">
 
-    <!-- Fil d'ariane -->
-    <div class="breadcrumb">
-      <router-link to="/structure/demandes">
-        <span class="drop-icon">🩸</span>
-        Demandes
-      </router-link>
-      <span class="separator">/</span>
-      <span class="current">Nouvelle demande</span>
+    <!-- ==========================================
+         EN-TÊTE
+    =========================================== -->
+    <div class="page-heading-row">
+      <div class="page-heading">
+        <h2>Mes demandes de sang</h2>
+        <p>Gérez vos demandes en cours, terminées et annulées.</p>
+      </div>
+
+      <AppButton
+        variant="primary"
+        to="/structure/demandes/creer"
+      >
+        <span class="plus-icon">+</span>
+        Créer une demande
+      </AppButton>
     </div>
 
-    <div class="page-heading">
-      <h2>Créer une demande de sang</h2>
-      <p>
-        Renseignez les informations cliniques nécessaires pour mobiliser les
-        donneurs compatibles en temps réel.
-      </p>
+    <!-- ==========================================
+         STATS
+    =========================================== -->
+    <div class="stats-grid">
+
+      <StatCard label="TOTAL" :value="stats.total">
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" stroke-width="2" />
+            <path d="M9 8H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            <path d="M9 12H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </template>
+      </StatCard>
+
+      <StatCard label="EN COURS" :value="stats.en_cours" highlight icon-tone="danger">
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
+            <path d="M12 7V12L15 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </template>
+      </StatCard>
+
+      <StatCard label="TERMINÉES" :value="stats.terminee" icon-tone="success">
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
+            <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </template>
+      </StatCard>
+
+      <StatCard label="ANNULÉES" :value="stats.annulee">
+        <template #icon>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
+            <path d="M9 9L15 15M15 9L9 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </template>
+      </StatCard>
+
     </div>
 
-    <form class="request-form" @submit.prevent="handleSubmit">
+    <!-- ==========================================
+         LISTE
+    =========================================== -->
+    <AppCard padding="0" class="requests-card">
 
-      <!-- ============================
-           ÉTAPE 1 — BESOIN DE SANG
-      ============================= -->
-      <AppCard padding="24px" class="form-section">
-
-        <div class="section-header">
-          <span class="step-number">1</span>
-          <div>
-            <h3>Besoin de sang</h3>
-            <p>Définissez le groupe immunohématologique et le degré de criticité.</p>
-          </div>
+      <div class="requests-header">
+        <div>
+          <h3>Liste des demandes</h3>
+          <p>Suivi opérationnel des admissions et des sollicitations</p>
         </div>
 
-        <div class="section-divider"></div>
-
-        <div class="section-grid two-cols">
-
-          <div class="field-block">
-            <AppSelect
-              id="blood-group"
-              v-model="form.bloodGroup"
-              label="Groupe sanguin recherché *"
-              placeholder="Sélectionner un groupe"
-              :options="bloodGroupOptions"
-            />
-            <p v-if="selectedBloodGroupHint" class="field-hint">
-              {{ selectedBloodGroupHint }}
-            </p>
-          </div>
-
-          <div class="field-block">
-            <AppSelect
-              id="urgency-level"
-              v-model="form.urgency"
-              label="Niveau d'urgence clinique *"
-              placeholder="Sélectionner un niveau"
-              :options="urgencyOptions"
-            />
-            <p v-if="selectedUrgencyHint" class="field-hint">
-              {{ selectedUrgencyHint }}
-            </p>
-          </div>
-
-        </div>
-
-      </AppCard>
-
-      <!-- ============================
-           ÉTAPE 2 — LIEU DE COLLECTE
-      ============================= -->
-      <AppCard padding="24px" class="form-section">
-
-        <div class="section-header">
-          <span class="step-number">2</span>
-          <div>
-            <h3>Lieu de collecte &amp; Périmètre</h3>
-            <p>Localisation de la banque de sang et ciblage kilométrique des donneurs.</p>
-          </div>
-        </div>
-
-        <div class="section-divider"></div>
-
-        <div class="section-grid two-cols">
+        <div class="requests-filters">
 
           <AppInput
-            id="requesting-facility"
-            v-model="form.facility"
-            label="Établissement demandeur"
-            disabled
-            hint="Structure certifiée sous contrat national CNTS"
+            id="search-request"
+            v-model="recherche"
+            placeholder="Rechercher..."
+            class="search-input"
           >
             <template #icon>
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="2" />
-                <path d="M8 11V8C8 5.79 9.79 4 12 4C14.21 4 16 5.79 16 8V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+                <path d="M21 21L16.5 16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
               </svg>
             </template>
           </AppInput>
 
           <AppSelect
-            id="requesting-service"
-            v-model="form.service"
-            label="Service / Unité de soins *"
-            placeholder="Sélectionner un service"
-            :options="serviceOptions"
+            id="filter-statut"
+            v-model="filtreStatut"
+            placeholder="Tous les statuts"
+            :options="statutOptions"
+          />
+
+          <AppSelect
+            id="filter-groupe"
+            v-model="filtreGroupe"
+            placeholder="Tous groupes"
+            :options="groupeOptions"
+          />
+
+          <AppSelect
+            id="filter-urgence"
+            v-model="filtreUrgence"
+            placeholder="Toutes urgences"
+            :options="urgenceOptions"
           />
 
         </div>
+      </div>
 
-        <div class="map-block">
+      <!-- ÉTAT DE CHARGEMENT -->
+      <div v-if="loading" class="loading-state">
+        <div class="spinner-large"></div>
+        <p>Chargement des demandes...</p>
+      </div>
 
-          <div class="map-block-header">
-            <span>Point d'orientation &amp; Commune</span>
-            <span class="map-location-label">{{ form.commune }}</span>
-          </div>
-
-          <!--
-            ⚠️ Placeholder visuel pour l'instant (pas de carte interactive branchée).
-            À remplacer plus tard par une vraie intégration (Leaflet / Google Maps).
-          -->
-          <div class="map-placeholder">
-            <div class="map-pin">📍</div>
-
-            <div class="map-address-card">
-              <span class="map-pin-small">📍</span>
-              <div>
-                <strong>{{ form.address }}</strong>
-                <span class="map-address-detail">{{ form.addressDetail }}</span>
-              </div>
-              <span class="map-active-dot">
-                <span class="dot"></span>
-                Point d'accueil actif
-              </span>
-            </div>
-          </div>
-
-        </div>
-
-      </AppCard>
-
-      <!-- ============================
-           ÉTAPE 3 — INFOS & MESSAGE
-      ============================= -->
-      <AppCard padding="24px" class="form-section">
-
-        <div class="section-header">
-          <span class="step-number">3</span>
-          <div>
-            <h3>Informations &amp; Message d'alerte</h3>
-            <p>Délai opérationnel et communication directe transmise aux donneurs.</p>
-          </div>
-        </div>
-
-        <div class="section-divider"></div>
-
-        <div class="section-grid two-cols">
-
-          <AppInput
-            id="deadline-date"
-            v-model="form.deadlineDate"
-            type="date"
-            label="Date limite *"
-            required
-          />
-
-          <AppInput
-            id="deadline-time"
-            v-model="form.deadlineTime"
-            type="time"
-            label="Heure limite impérative *"
-            required
-          />
-
-        </div>
-
-        <div class="field-block textarea-block">
-          <AppTextarea
-            id="alert-message"
-            v-model="form.message"
-            label="Message notifié aux donneurs"
-            :rows="4"
-            :maxlength="messageMaxLength"
-          />
-          <span class="char-counter">
-            {{ form.message.length }} / {{ messageMaxLength }} caractères
-          </span>
-        </div>
-
-      </AppCard>
-
-      <!-- ============================
-           ACTIONS
-      ============================= -->
-      <div class="form-actions">
+      <!-- ÉTAT VIDE -->
+      <div v-else-if="demandesPaginees.length === 0" class="empty-state">
+        <div class="empty-icon">📋</div>
+        <h3>Aucune demande trouvée</h3>
+        <p v-if="demandesFiltrees.length === 0 && demandesStore.demandes.length === 0">
+          Vous n'avez encore créé aucune demande.
+        </p>
+        <p v-else>
+          Aucune demande ne correspond à vos filtres.
+        </p>
         <AppButton
-          type="button"
-          variant="outline"
-          @click="handleCancel"
-        >
-          Annuler
-        </AppButton>
-
-        <AppButton
-          type="submit"
+          v-if="demandesStore.demandes.length === 0"
           variant="primary"
+          to="/structure/demandes/creer"
         >
-          Créer la demande
+          Créer ma première demande
         </AppButton>
       </div>
 
-    </form>
+      <!-- TABLEAU -->
+      <div v-else class="requests-table-wrapper">
+        <table class="requests-table">
+
+          <thead>
+            <tr>
+              <th>Référence</th>
+              <th>Groupe</th>
+              <th>Quantité</th>
+              <th>Urgence</th>
+              <th>Date limite</th>
+              <th>Sollicitations</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr v-for="demande in demandesPaginees" :key="demande.id">
+
+              <td>
+                <strong>#DS-{{ demande.id.toString().padStart(4, '0') }}</strong>
+                <span v-if="demande.message" class="request-service">
+                  {{ demande.message.slice(0, 40) }}{{ demande.message.length > 40 ? '...' : '' }}
+                </span>
+              </td>
+
+              <td>
+                <span class="group-pill">{{ demande.groupe_sanguin }}</span>
+              </td>
+
+              <td>
+                {{ demande.quantite }} poche{{ demande.quantite > 1 ? 's' : '' }}
+              </td>
+
+              <td>
+                <AppBadge :variant="urgenceVariant(demande.urgence)">
+                  {{ urgenceLabel(demande.urgence) }}
+                </AppBadge>
+              </td>
+
+              <td class="date-cell">
+                {{ formaterDate(demande.date_limite) }}
+              </td>
+
+              <td class="soliciting-cell">
+                {{ demande.nombre_sollicitations || 0 }} envoyée{{ (demande.nombre_sollicitations || 0) > 1 ? 's' : '' }}
+                <span v-if="demande.nombre_participations_confirmees > 0" class="confirmed-info">
+                  • {{ demande.nombre_participations_confirmees }} confirmé{{ demande.nombre_participations_confirmees > 1 ? 's' : '' }}
+                </span>
+              </td>
+
+              <td>
+                <AppBadge :variant="statutVariant(demande.statut)">
+                  {{ statutLabel(demande.statut) }}
+                </AppBadge>
+              </td>
+
+              <td>
+                <div class="actions-cell">
+                  <button
+                    v-if="demande.statut === 'en_cours'"
+                    type="button"
+                    class="action-button danger"
+                    @click="ouvrirConfirmationAnnulation(demande)"
+                  >
+                    Annuler
+                  </button>
+                  <span v-else class="no-action">—</span>
+                </div>
+              </td>
+
+            </tr>
+          </tbody>
+
+        </table>
+      </div>
+
+      <!-- FOOTER -->
+      <div v-if="demandesFiltrees.length > 0" class="requests-footer">
+        <span>
+          Affichage de {{ demandesPaginees.length }}
+          sur {{ demandesFiltrees.length }}
+          demande{{ demandesFiltrees.length > 1 ? 's' : '' }}
+        </span>
+
+        <div class="pagination">
+          <button
+            type="button"
+            :disabled="pageActuelle === 1"
+            @click="changerPage(pageActuelle - 1)"
+          >
+            Précédent
+          </button>
+
+          <button
+            v-for="n in totalPages"
+            :key="n"
+            type="button"
+            :class="{ active: n === pageActuelle }"
+            @click="changerPage(n)"
+          >
+            {{ n }}
+          </button>
+
+          <button
+            type="button"
+            :disabled="pageActuelle === totalPages"
+            @click="changerPage(pageActuelle + 1)"
+          >
+            Suivant
+          </button>
+        </div>
+      </div>
+
+    </AppCard>
+
+    <!-- ==========================================
+         MODAL DE CONFIRMATION
+    =========================================== -->
+    <div v-if="demandeAnnulation" class="modal-overlay" @click.self="fermerConfirmation">
+      <div class="modal-box">
+        <div class="modal-icon danger">⚠️</div>
+        <h3>Annuler cette demande ?</h3>
+        <p>
+          La demande <strong>#DS-{{ demandeAnnulation.id.toString().padStart(4, '0') }}</strong>
+          sera marquée comme annulée. Cette action est irréversible.
+        </p>
+
+        <div class="modal-actions">
+          <AppButton
+            variant="outline"
+            :disabled="annulationEnCours"
+            @click="fermerConfirmation"
+          >
+            Retour
+          </AppButton>
+          <AppButton
+            variant="primary"
+            :disabled="annulationEnCours"
+            @click="confirmerAnnulation"
+          >
+            <template v-if="annulationEnCours">
+              <span class="spinner-small"></span>
+              Annulation...
+            </template>
+            <template v-else>
+              Oui, annuler
+            </template>
+          </AppButton>
+        </div>
+      </div>
+    </div>
 
   </div>
 </template>
+
 <script setup>
-import { computed, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useDemandesStore } from '@/stores/demandes'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
 import AppSelect from '@/components/AppSelect.vue'
-import AppTextarea from '@/components/AppTextarea.vue'
+import AppBadge from '@/components/AppBadge.vue'
 import AppButton from '@/components/AppButton.vue'
+import StatCard from '@/components/StatCard.vue'
 
-const router = useRouter()
+const demandesStore = useDemandesStore()
 
-const messageMaxLength = 280
+// ==========================================
+// CHARGEMENT INITIAL
+// ==========================================
 
-const form = reactive({
-  bloodGroup: 'O-',
-  urgency: 'vitale',
-  facility: 'CHNU de Fann — Dakar',
-  service: '',
-  commune: 'Dakar-Plateau / Fann-Point E',
-  address: 'Avenue Cheikh Anta Diop, Dakar',
-  addressDetail: 'Pavillon Maternité • Coordonnées GPS enregistrées',
-  deadlineDate: '',
-  deadlineTime: '16:00',
-  message: '',
+const loading = ref(true)
+
+onMounted(async () => {
+  try {
+    await demandesStore.chargerDemandes()
+  } finally {
+    loading.value = false
+  }
 })
 
-const bloodGroupOptions = [
-  { value: 'O-', label: 'O- — Universel' },
-  { value: 'O+', label: 'O+ — Courant' },
-  { value: 'A+', label: 'A+ — Standard' },
-  { value: 'A-', label: 'A- — Rare' },
-  { value: 'B+', label: 'B+ — Standard' },
-  { value: 'B-', label: 'B- — Rare' },
-  { value: 'AB+', label: 'AB+ — Receveur' },
-  { value: 'AB-', label: 'AB- — Très rare' },
+// ==========================================
+// FILTRES
+// ==========================================
+
+const recherche = ref('')
+const filtreStatut = ref('')
+const filtreGroupe = ref('')
+const filtreUrgence = ref('')
+
+const statutOptions = [
+  { value: '', label: 'Tous les statuts' },
+  { value: 'en_cours', label: 'En cours' },
+  { value: 'terminee', label: 'Terminée' },
+  { value: 'expiree', label: 'Expirée' },
+  { value: 'annulee', label: 'Annulée' },
 ]
 
-const urgencyOptions = [
+const groupeOptions = [
+  { value: '', label: 'Tous groupes' },
+  { value: 'O+', label: 'O+' },
+  { value: 'O-', label: 'O-' },
+  { value: 'A+', label: 'A+' },
+  { value: 'A-', label: 'A-' },
+  { value: 'B+', label: 'B+' },
+  { value: 'B-', label: 'B-' },
+  { value: 'AB+', label: 'AB+' },
+  { value: 'AB-', label: 'AB-' },
+]
+
+const urgenceOptions = [
+  { value: '', label: 'Toutes urgences' },
   { value: 'vitale', label: 'Urgence vitale' },
   { value: 'urgent', label: 'Urgent' },
   { value: 'programme', label: 'Programmé' },
 ]
 
-const urgencyDescriptions = {
-  vitale: 'Alerte SMS instantanée & push prioritaire direct.',
-  urgent: 'Intervention chirurgicale imminente.',
-  programme: 'Mobilisation planifiée sous 24 à 72 heures.',
-}
+// ==========================================
+// STATS (calculées depuis la liste)
+// ==========================================
 
-const serviceOptions = [
-  { value: 'maternite', label: 'Maternité & Néonatologie (Bloc obstétrical)' },
-  { value: 'reanimation', label: 'Service Réanimation' },
-  { value: 'chirurgie', label: 'Chirurgie Cardiovasculaire' },
-  { value: 'urgences', label: "Service d'Urgences" },
-]
-
-const selectedBloodGroupHint = computed(() => {
-  const option = bloodGroupOptions.find((o) => o.value === form.bloodGroup)
-  return option ? `Groupe sélectionné : ${option.label}` : ''
+const stats = computed(() => {
+  const d = demandesStore.demandes || []
+  return {
+    total: d.length,
+    en_cours: d.filter(x => x.statut === 'en_cours').length,
+    terminee: d.filter(x => x.statut === 'terminee').length,
+    annulee: d.filter(x => x.statut === 'annulee').length,
+  }
 })
 
-const selectedUrgencyHint = computed(() => {
-  return urgencyDescriptions[form.urgency] || ''
+// ==========================================
+// FILTRAGE
+// ==========================================
+
+const demandesFiltrees = computed(() => {
+  let resultat = demandesStore.demandes || []
+
+  // Recherche (référence ou message)
+  const r = recherche.value.trim().toLowerCase()
+  if (r) {
+    resultat = resultat.filter(d =>
+      `#ds-${d.id.toString().padStart(4, '0')}`.includes(r) ||
+      (d.message || '').toLowerCase().includes(r)
+    )
+  }
+
+  // Statut
+  if (filtreStatut.value) {
+    resultat = resultat.filter(d => d.statut === filtreStatut.value)
+  }
+
+  // Groupe
+  if (filtreGroupe.value) {
+    resultat = resultat.filter(d => d.groupe_sanguin === filtreGroupe.value)
+  }
+
+  // Urgence
+  if (filtreUrgence.value) {
+    resultat = resultat.filter(d => d.urgence === filtreUrgence.value)
+  }
+
+  return resultat
 })
 
-function handleCancel() {
-  router.push('/structure/demandes')
+// ==========================================
+// PAGINATION
+// ==========================================
+
+const pageActuelle = ref(1)
+const elementsParPage = 10
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(demandesFiltrees.value.length / elementsParPage))
+})
+
+const demandesPaginees = computed(() => {
+  const debut = (pageActuelle.value - 1) * elementsParPage
+  return demandesFiltrees.value.slice(debut, debut + elementsParPage)
+})
+
+function changerPage(n) {
+  if (n < 1 || n > totalPages.value) return
+  pageActuelle.value = n
 }
 
-function handleSubmit() {
-  console.log('Nouvelle demande de sang :', form)
+// Reset la page à 1 quand les filtres changent
+watch([recherche, filtreStatut, filtreGroupe, filtreUrgence], () => {
+  pageActuelle.value = 1
+})
 
-  // Plus tard : appel API POST /demandes puis redirection
-  // router.push('/structure/demandes')
+// ==========================================
+// HELPERS
+// ==========================================
+
+function formaterDate(dateIso) {
+  if (!dateIso) return '—'
+  const date = new Date(dateIso)
+  const options = { day: '2-digit', month: 'short', year: 'numeric' }
+  return date.toLocaleDateString('fr-FR', options)
+}
+
+function urgenceVariant(urgence) {
+  if (urgence === 'vitale') return 'danger'
+  if (urgence === 'urgent') return 'warning'
+  return 'default'
+}
+
+function urgenceLabel(urgence) {
+  if (urgence === 'vitale') return 'Vitale'
+  if (urgence === 'urgent') return 'Urgent'
+  if (urgence === 'programme') return 'Programmé'
+  return urgence
+}
+
+function statutVariant(statut) {
+  if (statut === 'en_cours') return 'info'
+  if (statut === 'terminee') return 'success'
+  if (statut === 'expiree') return 'warning'
+  if (statut === 'annulee') return 'danger'
+  return 'default'
+}
+
+function statutLabel(statut) {
+  if (statut === 'en_cours') return 'En cours'
+  if (statut === 'terminee') return 'Terminée'
+  if (statut === 'expiree') return 'Expirée'
+  if (statut === 'annulee') return 'Annulée'
+  return statut
+}
+
+// ==========================================
+// ANNULATION (modal)
+// ==========================================
+
+const demandeAnnulation = ref(null)
+const annulationEnCours = ref(false)
+
+function ouvrirConfirmationAnnulation(demande) {
+  demandeAnnulation.value = demande
+}
+
+function fermerConfirmation() {
+  if (annulationEnCours.value) return
+  demandeAnnulation.value = null
+}
+
+async function confirmerAnnulation() {
+  if (!demandeAnnulation.value) return
+
+  annulationEnCours.value = true
+  try {
+    await demandesStore.annulerDemande(demandeAnnulation.value.id)
+    demandeAnnulation.value = null
+  } catch (e) {
+    // Silencieux : le store a déjà l'erreur
+  } finally {
+    annulationEnCours.value = false
+  }
 }
 </script>
 
 <style scoped>
-.create-request-view {
+.requests-view {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-/* ========================================
-   FIL D'ARIANE
-======================================== */
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  margin-bottom: 6px;
-
-  color: #8a94a3;
-  font-size: 13px;
-}
-
-.breadcrumb a {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-
-  color: #8a94a3;
-  text-decoration: none;
-}
-
-.breadcrumb a:hover {
-  color: var(--bloodsen-red);
-}
-
-.breadcrumb .current {
-  color: var(--bloodsen-dark);
-  font-weight: 600;
+  gap: 24px;
 }
 
 /* ========================================
    EN-TÊTE
 ======================================== */
 
+.page-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 .page-heading h2 {
   margin: 0 0 6px;
 
   color: var(--bloodsen-dark);
-
   font-size: 30px;
   font-weight: 700;
 }
@@ -349,227 +534,399 @@ function handleSubmit() {
 .page-heading p {
   margin: 0;
 
-  max-width: 720px;
-
   color: #6b7280;
-
   font-size: 14px;
   line-height: 1.5;
 }
 
+.plus-icon {
+  margin-right: 6px;
+  font-size: 18px;
+  line-height: 1;
+}
+
 /* ========================================
-   FORMULAIRE
+   STATS
 ======================================== */
 
-.request-form {
-  display: flex;
-  flex-direction: column;
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
-
-  margin-top: 20px;
 }
 
-.form-section {
-  display: flex;
-  flex-direction: column;
+/* ========================================
+   CARTE DES DEMANDES
+======================================== */
+
+.requests-card {
+  overflow: hidden;
 }
 
-.section-header {
+.requests-header {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+
+  gap: 16px;
+
+  padding: 20px 24px;
+
+  border-bottom: 1px solid #e7e9ed;
 }
 
-.step-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  width: 28px;
-  height: 28px;
-
-  border-radius: 6px;
-
-  background-color: var(--bloodsen-dark);
-  color: #ffffff;
-
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.section-header h3 {
+.requests-header h3 {
   margin: 0 0 4px;
 
   color: var(--bloodsen-dark);
-
   font-size: 17px;
   font-weight: 700;
 }
 
-.section-header p {
+.requests-header p {
   margin: 0;
 
   color: #6b7280;
   font-size: 13px;
 }
 
-.section-divider {
-  height: 1px;
-  margin: 18px 0 22px;
-
-  background-color: #eef0f2;
-}
-
-.section-grid {
-  display: grid;
-  gap: 20px;
-}
-
-.section-grid.two-cols {
-  grid-template-columns: 1fr 1fr;
-}
-
-.field-block {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.field-hint {
-  margin: 0;
-  color: #6b7280;
-  font-size: 12px;
-}
-
-/* ========================================
-   BLOC CARTE (placeholder)
-======================================== */
-
-.map-block {
-  margin-top: 22px;
-}
-
-.map-block-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px;
-
-  margin-bottom: 10px;
-
-  color: var(--bloodsen-dark);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.map-location-label {
-  color: #8a94a3;
-  font-weight: 500;
-}
-
-.map-placeholder {
-  position: relative;
-
-  height: 220px;
-
-  border-radius: 10px;
-  overflow: hidden;
-
-  background: linear-gradient(135deg, #cdeef7 0%, #e7f6fb 60%, #f3f6f2 100%);
-}
-
-.map-pin {
-  position: absolute;
-  top: 40%;
-  left: 55%;
-
-  font-size: 22px;
-  transform: translate(-50%, -50%);
-}
-
-.map-address-card {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-
+.requests-filters {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-
-  padding: 12px 14px;
-
-  border-radius: 8px;
-
-  background-color: #ffffff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
 }
 
-.map-pin-small {
-  font-size: 16px;
+.requests-filters :deep(.search-input) {
+  min-width: 200px;
 }
 
-.map-address-card strong {
-  display: block;
+.requests-filters :deep(.select-group select),
+.requests-filters :deep(select) {
+  min-width: 150px;
+}
+
+/* ========================================
+   ÉTAT DE CHARGEMENT
+======================================== */
+
+.loading-state {
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.loading-state p {
+  margin: 16px 0 0;
+
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.spinner-large {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+
+  border: 3px solid #e6eaf0;
+  border-top-color: var(--bloodsen-red);
+  border-radius: 50%;
+
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ========================================
+   ÉTAT VIDE
+======================================== */
+
+.empty-state {
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px;
+
   color: var(--bloodsen-dark);
-  font-size: 13px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
-.map-address-detail {
+.empty-state p {
+  margin: 0 0 20px;
+
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* ========================================
+   TABLEAU
+======================================== */
+
+.requests-table-wrapper {
+  overflow-x: auto;
+}
+
+.requests-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.requests-table th {
+  padding: 12px 20px;
+
+  color: #8a94a3;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.requests-table td {
+  padding: 16px 20px;
+
+  border-top: 1px solid #f0f1f3;
+
+  color: var(--bloodsen-dark);
+  font-size: 14px;
+
+  vertical-align: middle;
+}
+
+.requests-table td strong {
+  display: block;
+  font-size: 14px;
+}
+
+.request-service {
   display: block;
   margin-top: 2px;
 
   color: #8a94a3;
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
-.map-active-dot {
-  display: flex;
+.group-pill {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-left: auto;
+  justify-content: center;
 
-  color: #1e9e5a;
+  min-width: 44px;
+  padding: 4px 10px;
+
+  border: 1px solid #f0d3d3;
+  border-radius: 20px;
+
+  background-color: #fdf1f1;
+  color: var(--bloodsen-red);
+
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+}
 
+.date-cell,
+.soliciting-cell {
+  color: #4a5568;
+  font-size: 13px;
   white-space: nowrap;
 }
 
-.map-active-dot .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #1e9e5a;
+.confirmed-info {
+  color: #1e9e5a;
+  font-weight: 600;
 }
 
-/* ========================================
-   MESSAGE + COMPTEUR
-======================================== */
-
-.textarea-block {
-  position: relative;
-  margin-top: 22px;
-}
-
-.char-counter {
-  align-self: flex-end;
-
-  color: #8a94a3;
-  font-size: 12px;
-}
-
-/* ========================================
-   ACTIONS
-======================================== */
-
-.form-actions {
+.actions-cell {
   display: flex;
-  justify-content: flex-end;
+  gap: 6px;
+  align-items: center;
+}
+
+.action-button {
+  padding: 6px 12px;
+
+  border: 1px solid #d9dde2;
+  border-radius: 6px;
+
+  background-color: #ffffff;
+  color: var(--bloodsen-dark);
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.15s ease;
+}
+
+.action-button.danger {
+  border-color: #f0d3d3;
+  color: var(--bloodsen-red);
+}
+
+.action-button.danger:hover {
+  background-color: #fdecec;
+}
+
+.no-action {
+  color: #c5cdd8;
+}
+
+/* ========================================
+   FOOTER + PAGINATION
+======================================== */
+
+.requests-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+
   gap: 12px;
+
+  padding: 16px 24px;
+
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.pagination {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pagination button {
+  padding: 6px 12px;
+
+  border: 1px solid #d9dde2;
+  border-radius: 6px;
+
+  background-color: #ffffff;
+  color: var(--bloodsen-dark);
+
+  font-family: inherit;
+  font-size: 13px;
+
+  cursor: pointer;
+}
+
+.pagination button.active {
+  background-color: var(--bloodsen-dark);
+  border-color: var(--bloodsen-dark);
+  color: #ffffff;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   MODAL
+======================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background-color: rgba(11, 25, 43, 0.6);
+
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-box {
+  max-width: 420px;
+  width: 100%;
+
+  padding: 32px 28px;
+
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+
+  text-align: center;
+}
+
+.modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
+
+  border-radius: 50%;
+
+  font-size: 28px;
+}
+
+.modal-icon.danger {
+  background-color: #fef3c7;
+}
+
+.modal-box h3 {
+  margin: 0 0 12px;
+
+  color: var(--bloodsen-dark);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.modal-box p {
+  margin: 0 0 24px;
+
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.modal-box p strong {
+  color: var(--bloodsen-dark);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* ========================================
@@ -578,31 +935,31 @@ function handleSubmit() {
 
 @media (max-width: 1200px) {
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 700px) {
 
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
   .page-heading h2 {
     font-size: 24px;
   }
 
-  .filters-row {
+  .requests-header {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .filters-row :deep(.search-input),
-  .filters-row :deep(.select-group),
-  .filters-row :deep(.date-input) {
-    min-width: 100%;
+  .requests-filters {
     width: 100%;
   }
 
-  .reset-filters {
-    margin-left: 0;
-    align-self: flex-end;
+  .requests-filters :deep(.search-input) {
+    min-width: 100%;
   }
 
   .requests-footer {
@@ -610,12 +967,12 @@ function handleSubmit() {
     align-items: flex-start;
   }
 
-  .pagination {
-    flex-wrap: wrap;
+  .modal-actions {
+    flex-direction: column-reverse;
   }
 
-  .empty-state {
-    padding: 40px 20px;
+  .modal-actions :deep(button) {
+    width: 100%;
   }
 }
 </style>

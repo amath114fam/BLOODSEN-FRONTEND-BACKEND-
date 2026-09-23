@@ -84,12 +84,10 @@ const router = createRouter({
         {
           path: 'profil',
           component: ProfileView,
-          meta: { topbarVariant: 'search' },
         },
         {
           path: 'profil/modifier',
           component: EditProfileView,
-          meta: { topbarVariant: 'search' },
         },
       ],
     },

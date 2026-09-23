@@ -31,22 +31,13 @@
 
         <div class="structure-actions">
 
-          <template v-if="topbarVariant !== 'search'">
-
-            <router-link to="/structure/demandes/creer" class="create-request-button">
-              <span class="plus-icon">+</span>
-              <span class="create-request-label">Créer une demande</span>
-            </router-link>
-
-            <button type="button" class="icon-button" aria-label="Notifications">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 8C18 5.79 16.21 4 14 4H10C7.79 4 6 5.79 6 8C6 12.5 4 14 4 16H20C20 14 18 12.5 18 8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M10 20H14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-              </svg>
-              <span v-if="hasNotifications" class="notification-dot"></span>
-            </button>
-
-          </template>
+          <button type="button" class="icon-button" aria-label="Notifications">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 8C18 5.79 16.21 4 14 4H10C7.79 4 6 5.79 6 8C6 12.5 4 14 4 16H20C20 14 18 12.5 18 8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M10 20H14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+            <span v-if="hasNotifications" class="notification-dot"></span>
+          </button>
 
           <router-link to="/structure/profil" class="user-block">
             <span class="user-avatar">{{ userInitials }}</span>
@@ -247,31 +238,6 @@ const hasNotifications = computed(() => pendingRequestsCount.value > 0)
   flex-shrink: 0;
 }
 
-.create-request-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-
-  padding: 10px 18px;
-
-  border-radius: 8px;
-
-  background-color: var(--bloodsen-red);
-  color: #ffffff;
-
-  font-size: 14px;
-  font-weight: 600;
-
-  text-decoration: none;
-
-  white-space: nowrap;
-}
-
-.plus-icon {
-  font-size: 16px;
-  line-height: 1;
-}
-
 .icon-button {
   position: relative;
 
@@ -412,9 +378,6 @@ const hasNotifications = computed(() => pendingRequestsCount.value > 0)
     font-size: 11.5px;
   }
 
-  .create-request-button {
-    display: none;
-  }
 
   .structure-content {
     padding: 20px 16px 96px;

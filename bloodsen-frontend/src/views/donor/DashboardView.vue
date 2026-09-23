@@ -3,7 +3,7 @@
 
     <div class="page-heading-row">
       <div class="page-heading">
-        <h2>Bonjour Moussa</h2>
+        <h2>Bonjour {{ prenom }}</h2>
         <p>Merci de contribuer à sauver des vies.</p>
       </div>
 
@@ -15,7 +15,7 @@
     <!-- Indicateurs -->
     <div class="stats-grid">
 
-      <StatCard label="SOLLICITATIONS EN ATTENTE" value="03">
+      <StatCard label="SOLLICITATIONS EN ATTENTE" :value="compteurs.sollicitations_en_attente">
         <template #icon>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" />
@@ -24,7 +24,7 @@
         </template>
       </StatCard>
 
-      <StatCard label="SOLLICITATIONS ACCEPTÉES" :value="12">
+      <StatCard label="SOLLICITATIONS ACCEPTÉES" :value="compteurs.sollicitations_acceptees">
         <template #icon>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M5 13L9 17L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -32,7 +32,7 @@
         </template>
       </StatCard>
 
-      <StatCard label="PARTICIPATIONS" :value="28">
+      <StatCard label="PARTICIPATIONS" :value="compteurs.dons_effectues">
         <template #icon>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2" />
@@ -41,7 +41,7 @@
         </template>
       </StatCard>
 
-      <StatCard label="DONS CONFIRMÉS" :value="24">
+      <StatCard label="DONS CONFIRMÉS" :value="compteurs.dons_effectues">
         <template #icon>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 21C12 21 4 15.5 4 9.5C4 6.46 6.46 4 9.5 4C11.24 4 12.78 4.81 12.78 4.81C12.78 4.81 14.32 4 16.06 4C19.1 4 21.56 6.46 21.56 9.5C21.56 15.5 12 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
@@ -62,7 +62,6 @@
             <span class="info-dot">i</span>
             <h3>Sollicitations récentes</h3>
           </div>
-          <span class="requests-updated">Actualisé il y a 5 min</span>
         </div>
 
         <div class="requests-table-wrapper">
@@ -72,7 +71,6 @@
               <tr>
                 <th>Demande</th>
                 <th>Groupe</th>
-                <th>Distance</th>
                 <th>Urgence</th>
                 <th>Statut</th>
                 <th>Action</th>
@@ -91,9 +89,6 @@
                   <span class="group-text">{{ request.group }}</span>
                 </td>
 
-                <td class="distance-cell">
-                  {{ request.distance }}
-                </td>
 
                 <td>
                   <AppBadge :variant="urgencyVariant(request.urgency)">
@@ -112,7 +107,7 @@
                     v-if="request.status === 'pending'"
                     variant="outline"
                     size="sm"
-                    :to="`/donneur/sollicitations/${request.id}`"
+                    to="/donneur/sollicitations"
                   >
                     Répondre
                   </AppButton>
@@ -121,7 +116,7 @@
                     v-else
                     variant="secondary"
                     size="sm"
-                    :to="`/donneur/sollicitations/${request.id}`"
+                    to="/donneur/sollicitations"
                   >
                     Détails
                   </AppButton>
@@ -183,7 +178,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import api from '@/services/api'
 
 import AppCard from '@/components/AppCard.vue'
 import AppBadge from '@/components/AppBadge.vue'
@@ -191,72 +187,122 @@ import AppButton from '@/components/AppButton.vue'
 import StatCard from '@/components/StatCard.vue'
 import EngagementCard from '@/components/EngagementCard.vue'
 
-const requests = ref([
-  {
-    id: 'req-1',
-    facility: 'Hôpital Principal',
-    location: 'Dakar, Plateau',
-    group: 'O+',
-    distance: '2.4 km',
-    urgency: 'critical',
-    status: 'pending',
-  },
-  {
-    id: 'req-2',
-    facility: 'Hôpital Dalal Jamm',
-    location: 'Guédiawaye',
-    group: 'A+',
-    distance: '12.1 km',
-    urgency: 'medium',
-    status: 'accepted',
-  },
-  {
-    id: 'req-3',
-    facility: 'Centre de Santé Phillippe',
-    location: 'Yoff',
-    group: 'O+',
-    distance: '5.8 km',
-    urgency: 'high',
-    status: 'pending',
-  },
-])
+// ==========================================
+// ÉTAT GLOBAL
+// ==========================================
+
+const loading = ref(true)
+const erreur = ref('')
+const dashboard = ref(null)
+
+// ==========================================
+// CHARGEMENT DES DONNÉES
+// ==========================================
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get('/dashboard/donneur/')
+    dashboard.value = data
+  } catch (e) {
+    erreur.value = 'Impossible de charger votre tableau de bord.'
+  } finally {
+    loading.value = false
+  }
+})
+
+// ==========================================
+// DONNÉES DÉRIVÉES
+// ==========================================
+
+// Profil du donneur
+const profil = computed(() => dashboard.value?.profil || {})
+
+// Compteurs
+const compteurs = computed(() => dashboard.value?.compteurs || {
+  sollicitations_en_attente: 0,
+  sollicitations_acceptees: 0,
+  dons_effectues: 0,
+})
+
+// Dernières sollicitations (déjà au format SollicitationSerializer)
+const requests = computed(() => {
+  const sollicitations = dashboard.value?.dernieres_sollicitations || []
+  return sollicitations.map(s => ({
+    id: s.id,
+    facility: s.structure_nom,
+    location: `${s.structure_ville}, ${s.structure_region}`,
+    group: s.groupe_sanguin,
+    urgency: s.urgence === 'vitale' ? 'critical' : (s.urgence === 'urgent' ? 'high' : 'medium'),
+    status: s.statut === 'en_attente' ? 'pending' : (s.statut === 'acceptee' ? 'accepted' : s.statut),
+  }))
+})
+
+// ==========================================
+// AFFICHAGE
+// ==========================================
+
+const prenom = computed(() => profil.value.prenom || 'Donneur')
+
+// Engagement (niveau, points, etc.)
+// On estime le niveau à partir du nombre de dons
+const engagement = computed(() => {
+  const dons = compteurs.value.dons_effectues || 0
+  const points = profil.value.points_total || 0
+
+  // Niveau 1 = 0-4 dons, Niveau 2 = 5-9, ..., Niveau 5 = 20+
+  const currentLevel = Math.min(Math.floor(dons / 5) + 1, 5)
+  const nextLevel = Math.min(currentLevel + 1, 5)
+  const target = nextLevel * 5
+
+  let label = 'Donneur Débutant'
+  if (currentLevel === 2) label = 'Donneur Régulier'
+  if (currentLevel === 3) label = 'Donneur Engagé'
+  if (currentLevel === 4) label = 'Donneur Élite'
+  if (currentLevel === 5) label = 'Donneur Héros'
+
+  return {
+    level: label,
+    donations: dons,
+    target,
+    currentLevel,
+    nextLevel,
+    participations: dons,
+    points,
+  }
+})
+
+// ==========================================
+// HELPERS
+// ==========================================
 
 function urgencyVariant(urgency) {
   if (urgency === 'critical') return 'danger'
-  return 'warning' // medium & high
+  return 'warning'
 }
 
 function urgencyLabel(urgency) {
   if (urgency === 'critical') return 'Critique'
-  if (urgency === 'medium') return 'Moyenne'
-  return 'Élevée'
+  if (urgency === 'high') return 'Élevée'
+  return 'Moyenne'
 }
 
 function statusLabel(status) {
-  return status === 'pending' ? 'En attente' : 'Acceptée'
+  if (status === 'pending') return 'En attente'
+  if (status === 'accepted') return 'Acceptée'
+  if (status === 'refusee') return 'Refusée'
+  if (status === 'expiree') return 'Expirée'
+  return status
 }
 
-const engagement = ref({
-  level: 'Donneur Élite',
-  donations: 24,
-  target: 30,
-  currentLevel: 3,
-  nextLevel: 4,
-  participations: 28,
-  points: 1420,
-})
-
-const engagementPercent = computed(() =>
-  Math.round((engagement.value.donations / engagement.value.target) * 100)
-)
+// ==========================================
+// CONSEILS (statiques, pas dans l'API)
+// ==========================================
 
 const tips = ref([
   { id: 1, emoji: '💧', text: 'Buvez beaucoup d\'eau (au moins 500ml) avant votre don pour rester bien hydraté.' },
   { id: 2, emoji: '🍽️', text: 'Évitez les repas gras 2h avant le don. Privilégiez des aliments sains.' },
   { id: 3, emoji: '🌙', text: 'Reposez-vous bien après votre don et évitez les efforts physiques intenses.' },
 ])
-
-// TODO : remplacer requests/engagement/tips par un appel API réel
 </script>
 
 <style scoped>
@@ -364,11 +410,6 @@ const tips = ref([
 
   font-size: 16px;
   font-weight: 700;
-}
-
-.requests-updated {
-  color: #8a94a3;
-  font-size: 12.5px;
 }
 
 .requests-table-wrapper {

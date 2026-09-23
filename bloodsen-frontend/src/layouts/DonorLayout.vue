@@ -7,19 +7,10 @@
 
       <header class="donor-topbar">
 
-        <AppInput
-            id="donor-topbar-search"
-            v-model="searchQuery"
-            :placeholder="searchPlaceholder"
-            class="topbar-search"
-        >
-          <template #icon>
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
-              <path d="M21 21L16.5 16.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
-          </template>
-        </AppInput>
+        <div class="donor-topbar-title">
+          <h2>Tableau de bord</h2>
+        </div>
+
 
         <div class="donor-actions">
 
@@ -64,45 +55,82 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { RouterView, useRoute } from 'vue-router'
+import { computed, ref, onMounted } from 'vue'
+import { RouterView } from 'vue-router'
 import DonorSidebar from '@/components/donor/DonorSidebar.vue'
 import DonorBottomNav from '@/components/donor/DonorBottomNav.vue'
-import AppInput from '@/components/AppInput.vue'
+import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
 
-const route = useRoute()
-const searchPlaceholder = computed(() =>
-  route.meta.searchPlaceholder || 'Rechercher une demande...'
-)
+const auth = useAuthStore()
 
-defineProps({
-  userName: {
-    type: String,
-    default: 'Moussa Diop',
-  },
-  userRole: {
-    type: String,
-    default: 'Donneur A+',
-  },
-  userInitials: {
-    type: String,
-    default: 'MD',
-  },
-  userAvatarUrl: {
-    type: String,
-    default: null, // TODO : brancher sur la vraie photo utilisateur (store / API)
-  },
-  pendingSollicitationsCount: {
-    type: [Number, String],
-    default: 3,
-  },
-  hasNotifications: {
-    type: Boolean,
-    default: true,
-  },
+// ==========================================
+// INFOS UTILISATEUR (depuis le store auth)
+// ==========================================
+
+// ==========================================
+// INFOS UTILISATEUR (depuis le store auth)
+// ==========================================
+
+// On force le chargement du profil si ce n'est pas déjà fait
+onMounted(async () => {
+  if (!auth.user) {
+    try {
+      await auth.fetchMe()
+    } catch (e) {
+      // Si le fetch échoue, l'intercepteur de api.js gère la redirection
+    }
+  }
 })
 
-const searchQuery = ref('')
+// Nom complet de l'utilisateur
+const userName = computed(() => {
+  const p = auth.user?.profil
+  if (!p) return 'Donneur'
+  return `${p.prenom || ''} ${p.nom || ''}`.trim()
+})
+
+// Rôle affiché ("Donneur A+")
+const userRole = computed(() => {
+  const p = auth.user?.profil
+  if (!p) return 'Donneur'
+  return `Donneur ${p.groupe_sanguin || ''}`.trim()
+})
+
+// Initiales (pour la fallback sans photo)
+const userInitials = computed(() => {
+  const p = auth.user?.profil
+  if (!p) return '?'
+  const prenomInitial = (p.prenom || '')[0] || ''
+  const nomInitial = (p.nom || '')[0] || ''
+  return `${prenomInitial}${nomInitial}`.toUpperCase() || '?'
+})
+
+// Photo de profil (pas encore implémentée côté backend)
+const userAvatarUrl = computed(() => null)
+
+// ==========================================
+// NOTIFICATIONS / SOLLICITATIONS EN ATTENTE
+// ==========================================
+
+const pendingSollicitationsCount = ref(0)
+
+async function chargerCompteurs() {
+  try {
+    const { data } = await api.get('/sollicitations/', {
+      params: { statut: 'en_attente' },
+    })
+    pendingSollicitationsCount.value = Array.isArray(data) ? data.length : 0
+  } catch (e) {
+    // Silencieux : si ça échoue, on laisse 0
+    pendingSollicitationsCount.value = 0
+  }
+}
+
+onMounted(chargerCompteurs)
+
+// Vrai si l'utilisateur a au moins une sollicitation en attente
+const hasNotifications = computed(() => pendingSollicitationsCount.value > 0)
 </script>
 
 <style scoped>
@@ -150,10 +178,13 @@ const searchQuery = ref('')
   flex-shrink: 0;
 }
 
-.topbar-search {
-  flex: 1;
-  max-width: 420px;
+.donor-topbar-title h2 {
   margin: 0;
+
+  color: var(--bloodsen-dark);
+
+  font-size: 30px;
+  font-weight: bold;
 }
 
 .donor-actions {

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from .models import Demande, Sollicitation
-
+from participations.models import Participation
 
 from django.utils import timezone
 from datetime import timedelta
@@ -72,9 +72,6 @@ class DemandeCreateSerializer(serializers.ModelSerializer):
 class DemandeSerializer(serializers.ModelSerializer):
     """
     Serializer utilisé pour LIRE une demande (GET).
-
-    On expose plus d'infos : le nom de la structure, les dates
-    automatiques, et le nombre de sollicitations générées.
     """
 
     structure_nom = serializers.CharField(
@@ -93,6 +90,10 @@ class DemandeSerializer(serializers.ModelSerializer):
         source='sollicitations.count',
         read_only=True,
     )
+    # Nombre de sollicitations encore en attente (non traitées)
+    nombre_sollicitations_en_attente = serializers.SerializerMethodField()
+    # Nombre de participations confirmées
+    nombre_participations_confirmees = serializers.SerializerMethodField()
 
     class Meta:
         model = Demande
@@ -109,8 +110,20 @@ class DemandeSerializer(serializers.ModelSerializer):
             'date_creation',
             'date_limite',
             'nombre_sollicitations',
+            'nombre_sollicitations_en_attente',
+            'nombre_participations_confirmees',
         ]
 
+    def get_nombre_sollicitations_en_attente(self, obj):
+        """Compte les sollicitations avec statut "en_attente"."""
+        return obj.sollicitations.filter(statut='en_attente').count()
+
+    def get_nombre_participations_confirmees(self, obj):
+        """Compte les participations confirmées liées aux sollicitations de cette demande."""
+        return Participation.objects.filter(
+            sollicitation__demande=obj,
+            statut='confirmee',
+        ).count()
 
 class SollicitationSerializer(serializers.ModelSerializer):
     """

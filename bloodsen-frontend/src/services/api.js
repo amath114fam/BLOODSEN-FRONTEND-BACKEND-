@@ -83,7 +83,15 @@ api.interceptors.response.use(
       isRefreshing = false
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
-      window.location.href = '/connexion'
+
+          // on ne redirige QUE si l'erreur ne vient PAS
+      // de l'endpoint de connexion lui-même. Sinon, un mauvais mot de passe
+      // déclencherait une redirection en boucle.
+      const urlAppelee = originalRequest.url || ''
+
+      if (!urlAppelee.includes('/auth/connexion/')) {
+        window.location.href = '/connexion'
+      }
       return Promise.reject(error)
     }
 

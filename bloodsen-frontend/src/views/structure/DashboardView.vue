@@ -97,7 +97,7 @@
             id="status-filter"
             v-model="statusFilter"
             placeholder="Tous les statuts"
-            :options="statusOptions"
+            :options="statusOptionsAvecTous"
           />
 
           <AppSelect
@@ -126,7 +126,7 @@
           </thead>
 
           <tbody>
-            <tr v-for="request in requests" :key="request.reference">
+            <tr v-for="request in requestsPaginees" :key="request.reference">
 
               <td>
                 <strong>{{ request.reference }}</strong>
@@ -146,9 +146,11 @@
               </td>
 
               <td>
-                <AppBadge :variant="request.status === 'progress' ? 'info' : 'default'">
-                  {{ request.status === 'progress' ? 'En cours' : 'Terminée' }}
+              <td>
+                <AppBadge :variant="badgeStatutVariant(request.statut)">
+                  {{ badgeStatutLabel(request.statut) }}
                 </AppBadge>
+              </td>
               </td>
 
               <td>
@@ -161,6 +163,11 @@
               </td>
 
             </tr>
+            <tr v-if="requestsFiltrees.length === 0">
+              <td colspan="6" class="empty-row">
+                Aucune demande ne correspond à vos filtres.
+              </td>
+            </tr>
           </tbody>
 
         </table>
@@ -168,14 +175,40 @@
 
       <div class="requests-footer">
 
-        <span>Affichage de 6 sur {{ stats.total }} demandes</span>
+      <span>
+        Affichage de {{ requestsPaginees.length }}
+        sur {{ requestsFiltrees.length }}
+        demande{{ requestsFiltrees.length > 1 ? 's' : '' }}
+        filtrée{{ requestsFiltrees.length > 1 ? 's' : '' }}
+        (total : {{ stats.total }})
+      </span>
+      <div class="pagination">
+        <button
+          type="button"
+          :disabled="pageActuelle === 1"
+          @click="changerPage(pageActuelle - 1)"
+        >
+          Précédent
+        </button>
 
-        <div class="pagination">
-          <button type="button">Précédent</button>
-          <button type="button" class="active">1</button>
-          <button type="button">2</button>
-          <button type="button">Suivant</button>
-        </div>
+        <button
+          v-for="n in totalPages"
+          :key="n"
+          type="button"
+          :class="{ active: n === pageActuelle }"
+          @click="changerPage(n)"
+        >
+          {{ n }}
+        </button>
+
+        <button
+          type="button"
+          :disabled="pageActuelle === totalPages"
+          @click="changerPage(pageActuelle + 1)"
+        >
+          Suivant
+        </button>
+      </div>
 
       </div>
 
@@ -195,24 +228,12 @@
           <span class="week-tag">Semaine en cours</span>
         </div>
 
-        <div class="bar-chart">
-          <div
-            v-for="day in weeklyData"
-            :key="day.label"
-            class="bar-column"
-          >
-            <span class="bar-value" :class="{ peak: day.peak }">
-              {{ day.value }}
-            </span>
-
-            <div
-              class="bar"
-              :class="{ peak: day.peak, muted: day.muted }"
-              :style="{ height: (day.value / maxWeeklyValue) * 90 + 'px' }"
-            ></div>
-
-            <span class="bar-label">{{ day.label }}</span>
-          </div>
+        <div class="bar-chart-container">
+          <BarChart
+            :labels="chartLabels"
+            :values="chartValues"
+            :peak-index="peakIndex"
+          />
         </div>
 
         <div class="weekly-footer">
@@ -233,6 +254,14 @@
           Volume par groupe sanguin dans notre banque
         </p>
 
+        <div class="doughnut-container">
+          <DoughnutChart
+            :labels="breakdownLabels"
+            :values="breakdownValues"
+          />
+        </div>
+
+        <!-- Liste détaillée sous le graphique -->
         <div class="breakdown-list">
 
           <div
@@ -240,25 +269,14 @@
             :key="item.label"
             class="breakdown-item"
           >
-
             <div class="breakdown-item-top">
               <span class="breakdown-label" :class="{ danger: item.danger }">
                 {{ item.label }}
               </span>
-
               <span class="breakdown-value" :class="{ danger: item.danger }">
-                {{ item.donations }} dons ({{ item.percent }}%)
+                {{ item.donations }} don{{ item.donations > 1 ? 's' : '' }} ({{ item.percent }}%)
               </span>
             </div>
-
-            <div class="breakdown-bar-track">
-              <div
-                class="breakdown-bar-fill"
-                :class="{ danger: item.danger }"
-                :style="{ width: item.percent + '%' }"
-              ></div>
-            </div>
-
           </div>
 
         </div>
@@ -275,23 +293,67 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
+import api from '@/services/api'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
 import AppSelect from '@/components/AppSelect.vue'
 import AppBadge from '@/components/AppBadge.vue'
 import StatCard from '@/components/StatCard.vue'
+import BarChart from '@/components/charts/BarChart.vue'
+import DoughnutChart from '@/components/charts/DoughnutChart.vue'
+
+// ==========================================
+// ÉTAT GLOBAL
+// ==========================================
+
+const loading = ref(true)
+const erreur = ref('')
+const dashboard = ref(null)
+const statsData = ref(null)
+// ==========================================
+// CHARGEMENT DES DONNÉES
+// ==========================================
+
+onMounted(async () => {
+  try {
+    const [dashboardRes, statsRes] = await Promise.all([
+      api.get('/dashboard/structure/'),
+      api.get('/dashboard/structure/stats/'),
+    ])
+    dashboard.value = dashboardRes.data
+    statsData.value = statsRes.data
+  } catch (e) {
+    erreur.value = 'Impossible de charger le tableau de bord.'
+  } finally {
+    loading.value = false
+  }
+})
+
+// ==========================================
+// FILTRES
+// ==========================================
 
 const search = ref('')
 const statusFilter = ref('')
 const groupFilter = ref('')
 
+// ==========================================
+// PAGINATION
+// ==========================================
+
+const pageActuelle = ref(1)
+const elementsParPage = ref(5)
+
 const bloodGroups = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
 
-const statusOptions = [
-  { value: 'progress', label: 'En cours' },
-  { value: 'done', label: 'Terminée' },
+const statusOptionsAvecTous = [
+  { value: '', label: 'Tous les statuts' },
+  { value: 'en_cours', label: 'En cours' },
+  { value: 'terminee', label: 'Terminée' },
+  { value: 'expiree', label: 'Expirée' },
+  { value: 'annulee', label: 'Annulée' },
 ]
 
 const groupOptions = bloodGroups.map((group) => ({
@@ -299,100 +361,180 @@ const groupOptions = bloodGroups.map((group) => ({
   label: group,
 }))
 
-const stats = ref({
-  total: 148,
-  inProgress: 6,
-  done: 135,
-  participations: 428,
+// ==========================================
+// DONNÉES DÉRIVÉES
+// ==========================================
+
+// Compteurs (stats globales)
+const stats = computed(() => {
+  const c = dashboard.value?.compteurs || {}
+  return {
+    total: (c.demandes_actives || 0) + (c.demandes_terminees || 0),
+    inProgress: c.demandes_actives || 0,
+    done: c.demandes_terminees || 0,
+    participations: c.participations_confirmees || 0,
+  }
 })
 
-const requests = ref([
-  {
-    reference: '#DS-2025-142',
-    service: 'Maternité • CHU Fann',
-    group: 'O-',
-    date: "Aujourd'hui à 11:24",
-    sent: 14,
-    confirmed: 2,
-    status: 'progress',
-  },
-  {
-    reference: '#DS-2025-141',
-    service: 'Service Réanimation • CHU Fann',
-    group: 'B+',
-    date: "Aujourd'hui à 09:40",
-    sent: 9,
-    confirmed: 1,
-    status: 'progress',
-  },
-  {
-    reference: '#DS-2025-139',
-    service: 'Chirurgie Cardiovasculaire • Pavillon Spécial',
-    group: 'A+',
-    date: "Aujourd'hui à 07:15",
-    sent: 18,
-    confirmed: 5,
-    status: 'progress',
-  },
-  {
-    reference: '#DS-2025-138',
-    service: 'Urgences Pédiatriques • CHU Fann',
-    group: 'O+',
-    date: 'Hier à 16:45',
-    sent: 18,
-    confirmed: 5,
-    status: 'done',
-  },
-  {
-    reference: '#DS-2025-135',
-    service: 'Oncologie • Hôpital Aristide Le Dantec (Transféré)',
-    group: 'AB+',
-    date: '05 Mai 2025 à 14:10',
-    sent: 18,
-    confirmed: 5,
-    status: 'done',
-  },
-  {
-    reference: '#DS-2025-131',
-    service: 'Chirurgie Orthopédique • CHU Fann',
-    group: 'A-',
-    date: '03 Mai 2025 à 18:00',
-    sent: 18,
-    confirmed: 5,
-    status: 'done',
-  },
-])
+// Demandes récentes (3 dernières de l'API)
+const requests = computed(() => {
+  const demandes = dashboard.value?.dernieres_demandes || []
+  return demandes.map(d => ({
+    id: d.id,
+    reference: `#DS-${d.id.toString().padStart(4, '0')}`,
+    service: d.message || 'Demande de sang',
+    group: d.groupe_sanguin,
+    date: formaterDate(d.date_creation),
+    sent: d.nombre_sollicitations || 0,
+    confirmed: d.nombre_participations_confirmees || 0,
+    statut: d.statut,   // ← on garde le vrai statut API
+  }))
+  
+})
 
-const weeklyData = ref([
-  { label: 'Lun', value: 4 },
-  { label: 'Mar', value: 7 },
-  { label: 'Mer', value: 10, peak: true },
-  { label: 'Jeu', value: 5 },
-  { label: 'Ven', value: 6 },
-  { label: 'Sam', value: 2, muted: true },
-  { label: 'Dim', value: 3, muted: true },
-])
+const requestsFiltrees = computed(() => {
+  let resultat = requests.value
 
-const maxWeeklyValue = computed(() =>
-  Math.max(...weeklyData.value.map((d) => d.value))
-)
+  // 1. Filtre recherche (référence ou service)
+  const recherche = search.value.trim().toLowerCase()
+  if (recherche) {
+    resultat = resultat.filter(r =>
+      r.reference.toLowerCase().includes(recherche) ||
+      r.service.toLowerCase().includes(recherche)
+    )
+  }
+
+  // 2. Filtre statut
+  
+  if (statusFilter.value) {
+    resultat = resultat.filter(r => r.statut === statusFilter.value)
+  }
+
+
+  // 3. Filtre groupe sanguin
+  if (groupFilter.value) {
+    resultat = resultat.filter(r => r.group === groupFilter.value)
+  }
+
+  return resultat
+})
+
+// ==========================================
+// PAGINATION
+// ==========================================
+
+// Nombre total de pages
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(requestsFiltrees.value.length / elementsParPage.value))
+})
+
+// Sous-liste des demandes pour la page actuelle
+const requestsPaginees = computed(() => {
+  const debut = (pageActuelle.value - 1) * elementsParPage.value
+  const fin = debut + elementsParPage.value
+  return requestsFiltrees.value.slice(debut, fin)
+})
+
+// Change la page (avec borne)
+function changerPage(nouvellePage) {
+  if (nouvellePage < 1) return
+  if (nouvellePage > totalPages.value) return
+  pageActuelle.value = nouvellePage
+}
+
+// Réinitialise la page à 1 quand les filtres changent
+watch([search, statusFilter, groupFilter], () => {
+  pageActuelle.value = 1
+})
+// ==========================================
+// FORMATAGE DE DATE
+// ==========================================
+
+function formaterDate(dateIso) {
+  const date = new Date(dateIso)
+  const maintenant = new Date()
+  const diffHeures = (maintenant - date) / (1000 * 60 * 60)
+
+  if (diffHeures < 24) {
+    const h = date.getHours().toString().padStart(2, '0')
+    const m = date.getMinutes().toString().padStart(2, '0')
+    return `Aujourd'hui à ${h}:${m}`
+  }
+
+  const options = { day: '2-digit', month: 'short', year: 'numeric' }
+  return date.toLocaleDateString('fr-FR', options)
+}
+
+// ==========================================
+// HELPERS STATUTS
+// ==========================================
+
+function badgeStatutVariant(statut) {
+  if (statut === 'en_cours') return 'info'
+  if (statut === 'terminee') return 'success'
+  if (statut === 'expiree') return 'warning'
+  if (statut === 'annulee') return 'danger'
+  return 'default'
+}
+
+function badgeStatutLabel(statut) {
+  if (statut === 'en_cours') return 'En cours'
+  if (statut === 'terminee') return 'Terminée'
+  if (statut === 'expiree') return 'Expirée'
+  if (statut === 'annulee') return 'Annulée'
+  return statut
+}
+// ==========================================
+// CHART HEBDOMADAIRE (données de l'API)
+// ==========================================
+
+const chartLabels = computed(() => {
+  return statsData.value?.chart_semaine?.map(d => d.jour) || []
+})
+
+const chartValues = computed(() => {
+  return statsData.value?.chart_semaine?.map(d => d.valeur) || []
+})
+
+// Index du pic (valeur maximale)
+const peakIndex = computed(() => {
+  const vals = chartValues.value
+  if (!vals.length) return -1
+  const max = Math.max(...vals)
+  if (max === 0) return -1
+  return vals.findIndex(v => v === max)
+})
 
 const totalWeekly = computed(() =>
-  weeklyData.value.reduce((sum, d) => sum + d.value, 0)
+  chartValues.value.reduce((sum, v) => sum + v, 0)
 )
 
-const peakDay = computed(() =>
-  weeklyData.value.reduce((max, d) => (d.value > max.value ? d : max))
-)
+const peakDay = computed(() => {
+  const labels = chartLabels.value
+  const values = chartValues.value
+  if (!labels.length) return { label: '—', value: 0 }
+  const max = Math.max(...values)
+  const idx = values.findIndex(v => v === max)
+  return { label: labels[idx], value: max }
+})
 
-const breakdown = ref([
-  { label: 'O Positif (O+)', donations: 205, percent: 48 },
-  { label: 'A Positif (A+)', donations: 112, percent: 26 },
-  { label: 'B Positif (B+)', donations: 68, percent: 16 },
-  { label: 'O Négatif & Rares', donations: 43, percent: 10, danger: true },
-])
+// ==========================================
+// RÉPARTITION (données de l'API)
+// ==========================================
 
-// TODO : remplacer stats/requests/weeklyData/breakdown par un appel API réel
+const breakdown = computed(() => {
+  const rep = statsData.value?.repartition_groupes || []
+  const groupes_rares = ['O-', 'B-', 'AB-']
+  return rep.map(item => ({
+    label: `Groupe ${item.groupe}`,
+    donations: item.dons,
+    percent: item.pourcentage,
+    danger: groupes_rares.includes(item.groupe),
+  }))
+})
+
+const breakdownLabels = computed(() => breakdown.value.map(b => b.label))
+const breakdownValues = computed(() => breakdown.value.map(b => b.donations))
 </script>
 
 <style scoped>
@@ -641,6 +783,12 @@ const breakdown = ref([
   color: #ffffff;
 }
 
+.pagination button.active {
+  background-color: var(--bloodsen-dark);
+  border-color: var(--bloodsen-dark);
+  color: #ffffff;
+}
+
 /* ========================================
    BAS DE PAGE
 ======================================== */
@@ -859,6 +1007,12 @@ const breakdown = ref([
   font-weight: 600;
 }
 
+.empty-row {
+  padding: 40px 24px !important;
+  text-align: center;
+  color: #8a94a3;
+  font-style: italic;
+}
 /* ========================================
    RESPONSIVE
 ======================================== */

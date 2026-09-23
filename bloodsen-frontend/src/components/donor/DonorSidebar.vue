@@ -109,6 +109,7 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 defineProps({
   pendingCount: {
@@ -118,8 +119,13 @@ defineProps({
 })
 
 const router = useRouter()
+const auth = useAuthStore()
 
 function handleLogout() {
+  // 1. Supprime les tokens et vide l'utilisateur du store
+  auth.logout()
+
+  // 2. Redirige vers la page de connexion
   router.push('/connexion')
 }
 </script>

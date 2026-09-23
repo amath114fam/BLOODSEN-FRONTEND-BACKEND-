@@ -1,6 +1,33 @@
 <template>
   <div class="login-page">
 
+        <!-- =========================
+         PARTIE DROITE
+    ========================== -->
+
+    <div class="login-visual">
+
+      <div class="visual-overlay"></div>
+
+      <div class="visual-content">
+
+        <blockquote>
+          « Chaque minute compte
+          lorsqu'une vie est en jeu. »
+        </blockquote>
+
+        <p>
+          BloodSen connecte en temps réel les banques de sang et
+          hôpitaux du Sénégal avec des donneurs volontaires certifiés,
+          réduisant drastiquement les délais critiques
+          d'approvisionnement.
+        </p>
+
+      </div>
+
+    </div>
+
+
     <!-- =========================
          PARTIE GAUCHE
     ========================== -->
@@ -12,16 +39,16 @@
         <!-- Logo + retour accueil -->
         <div class="login-top">
 
+          <router-link to="/" class="back-home">
+            <span>←</span>
+            Retour à l'accueil
+          </router-link>
+
           <router-link to="/" class="login-logo">
             <img
               src="@/assets/images/logo.png"
               alt="BloodSen"
             />
-          </router-link>
-
-          <router-link to="/" class="back-home">
-            <span>←</span>
-            Retour à l'accueil
           </router-link>
 
         </div>
@@ -108,7 +135,9 @@
               </svg>
             </template>
           </AppInput>
-
+          <div v-if="erreur" class="login-error">
+            {{ erreur }}
+          </div>
           <div class="login-options">
 
             <label class="remember-me">
@@ -129,9 +158,15 @@
             type="submit"
             variant="primary"
             size="lg"
+            :disabled="auth.loading"
           >
-            Se connecter
-            <span class="button-arrow">→</span>
+            <template v-if="auth.loading">
+              <span class="spinner"></span>
+              Chargement...
+            </template>
+            <template v-else>
+              Se connecter
+            </template>
           </AppButton>
 
           <div class="login-divider"></div>
@@ -185,40 +220,28 @@
 
     </div>
 
-    <!-- =========================
-         PARTIE DROITE
-    ========================== -->
-
-    <div class="login-visual">
-
-      <div class="visual-overlay"></div>
-
-      <div class="visual-content">
-
-        <blockquote>
-          « Chaque minute compte
-          lorsqu'une vie est en jeu. »
-        </blockquote>
-
-        <p>
-          BloodSen connecte en temps réel les banques de sang et
-          hôpitaux du Sénégal avec des donneurs volontaires certifiés,
-          réduisant drastiquement les délais critiques
-          d'approvisionnement.
-        </p>
-
-      </div>
-
-    </div>
-
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
 import AppButton from '@/components/AppButton.vue'
 import AppInput from '@/components/AppInput.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const auth = useAuthStore()
+
+// Au montage du composant, on vérifie si un email a été mémorisé
+onMounted(() => {
+  const emailSauvegarde = localStorage.getItem('remembered_email')
+  if (emailSauvegarde) {
+    form.email = emailSauvegarde
+    form.rememberMe = true
+  }
+})
 
 const form = reactive({
   email: '',
@@ -226,11 +249,42 @@ const form = reactive({
   rememberMe: false,
 })
 
-function handleSubmit() {
-  console.log('Connexion :', form)
+// Message d'erreur affiché à l'utilisateur en cas d'échec de connexion.
+const erreur = ref('')
 
-  // Plus tard :
-  // appel API Django/DRF pour authentifier l'utilisateur.
+async function handleSubmit() {
+  // Réinitialiser l'erreur précédente
+  erreur.value = ''
+
+  try {
+    // 1. Appel au store qui fait l'appel API et stocke les tokens
+    await auth.login(form.email, form.password)
+
+    // 2. Gestion du "Se souvenir de moi" : sauvegarder l'email
+    if (form.rememberMe) {
+      localStorage.setItem('remembered_email', form.email)
+    } else {
+      localStorage.removeItem('remembered_email')
+    }
+
+    // 3. Redirection selon le rôle
+    if (auth.role === 'structure') {
+      router.push('/structure/tableau-de-bord')
+    } else if (auth.role === 'donneur') {
+      router.push('/donneur/tableau-de-bord')
+    } else {
+      router.push('/')
+    }
+  } catch (error) {
+    // 4. Gestion des erreurs
+    if (error.response?.status === 401) {
+      erreur.value = 'Email ou mot de passe incorrect.'
+    } else if (error.response?.data?.detail) {
+      erreur.value = error.response.data.detail
+    } else {
+      erreur.value = 'Une erreur est survenue. Veuillez réessayer.'
+    }
+  }
 }
 </script>
 
@@ -245,13 +299,12 @@ function handleSubmit() {
   grid-template-columns: 50% 50%;
 
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
 
   overflow: hidden;
 
   background-color: #ffffff;
 }
-
 /* ========================================
    FORMULAIRE - GAUCHE
 ======================================== */
@@ -266,15 +319,19 @@ function handleSubmit() {
 }
 
 .login-form-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
   width: 100%;
   max-width: 560px;
   height: 100%;
 
   box-sizing: border-box;
 
-  padding: 32px 64px 20px;
+  padding: 32px 64px;
+  overflow-y: auto;
 }
-
 /* ========================================
    HAUT DE PAGE
 ======================================== */
@@ -284,7 +341,7 @@ function handleSubmit() {
   align-items: center;
   justify-content: space-between;
 
-  margin-bottom: 60px;
+  margin-bottom: 40px;   /* ← était 60px */
 }
 
 .login-logo img {
@@ -400,15 +457,28 @@ function handleSubmit() {
   text-decoration: underline;
 }
 
+
+
 /* ========================================
-   BOUTON
+   SPINNER DE CHARGEMENT
 ======================================== */
 
-.button-arrow {
-  margin-left: 8px;
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
 
-  font-size: 20px;
-  line-height: 1;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ========================================
@@ -550,8 +620,16 @@ function handleSubmit() {
    VISUEL DROITE
 ======================================== */
 
+/* ========================================
+   VISUEL DROITE
+======================================== */
+
 .login-visual {
   position: relative;
+
+  display: flex;
+  align-items: flex-end;       /* colle le contenu en bas */
+  justify-content: center;
 
   width: 100%;
   height: 100%;
@@ -572,21 +650,21 @@ function handleSubmit() {
 }
 
 .visual-content {
-  position: absolute;
+  position: relative;          /* ← plus "absolute" */
+  z-index: 1;                  /* passe au-dessus de l'overlay */
 
-  right: 64px;
-  bottom: 72px;
-  left: 64px;
-
+  width: 100%;
   max-width: 580px;
+
+  padding: 0 64px 64px;        /* marge interne : 64px en bas et sur les côtés */
 
   color: #ffffff;
 }
 
 .visual-content blockquote {
-  margin: 0 0 18px;
+  margin: 0 0 14px;
 
-  font-size: 32px;
+  font-size: 28px;
   line-height: 1.15;
   font-weight: 700;
 }
@@ -596,10 +674,25 @@ function handleSubmit() {
 
   color: rgba(255, 255, 255, 0.86);
 
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.5;
 }
+/* ========================================
+   MESSAGE D'ERREUR
+======================================== */
 
+.login-error {
+  padding: 12px 16px;
+
+  background-color: #fde8e8;
+  border: 1px solid #f5c2c7;
+  border-radius: 6px;
+
+  color: #b42318;
+
+  font-size: 14px;
+  line-height: 1.4;
+}
 /* ========================================
    TABLETTE
 ======================================== */
@@ -612,17 +705,18 @@ function handleSubmit() {
   }
 
   .visual-content {
-    right: 40px;
-    bottom: 50px;
-    left: 40px;
+    padding: 0 40px 40px;
   }
 
   .visual-content blockquote {
-    font-size: 28px;
+    font-size: 24px;
+  }
+
+  .visual-content p {
+    font-size: 14px;
   }
 
 }
-
 /* ========================================
    ÉCRANS PLUS PETITS
 ======================================== */
@@ -689,17 +783,15 @@ function handleSubmit() {
   }
 
   .visual-content {
-    right: 24px;
-    bottom: 28px;
-    left: 24px;
+    padding: 0 24px 32px;
   }
 
   .visual-content blockquote {
-    font-size: 24px;
+    font-size: 20px;
   }
 
   .visual-content p {
-    font-size: 14px;
+    font-size: 13px;
   }
 
 }

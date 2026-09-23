@@ -2,6 +2,7 @@
   <component
     :is="to ? 'router-link' : 'button'"
     :to="to || undefined"
+    :type="to ? undefined : type"
     class="app-button"
     :class="[`app-button--${variant}`, `app-button--${size}`]"
     :disabled="!to && disabled"
@@ -27,6 +28,11 @@ defineProps({
   to: {
     type: [String, Object],
     default: null
+  },
+ 
+  type: {
+    type: String,
+    default: 'button' 
   }
 })
 </script>

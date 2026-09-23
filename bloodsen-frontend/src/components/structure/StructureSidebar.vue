@@ -109,11 +109,17 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
-import { useRoute} from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+
+// ==========================================
+// DÉTECTION DE LA SECTION ACTIVE
+// ==========================================
 
 function isSectionActive(basePath) {
   return route.path === basePath || route.path.startsWith(`${basePath}/`)
@@ -125,7 +131,9 @@ const isDonorsActive = computed(() => isSectionActive('/structure/donneurs'))
 const isParticipationsActive = computed(() => isSectionActive('/structure/participations'))
 const isProfileActive = computed(() => isSectionActive('/structure/profil'))
 
-
+// ==========================================
+// PROPS
+// ==========================================
 
 defineProps({
   demandesCount: {
@@ -134,9 +142,15 @@ defineProps({
   },
 })
 
-const router = useRouter()
+// ==========================================
+// DÉCONNEXION
+// ==========================================
 
 function handleLogout() {
+  // 1. Supprime les tokens et vide l'utilisateur du store
+  auth.logout()
+
+  // 2. Redirige vers la page de connexion
   router.push('/connexion')
 }
 </script>

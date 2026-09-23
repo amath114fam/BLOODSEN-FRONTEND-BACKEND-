@@ -18,11 +18,16 @@ import DonorParticipationsView from '@/views/donor/ParticipationsView.vue'
 import HistoriqueView from '@/views/donor/HistoriqueView.vue'
 import DonorProfileView from '@/views/donor/ProfileView.vue'
 import DonorEditProfileView from '@/views/donor/EditProfileView.vue'
+import VerifyEmailView from '@/views/public/VerifyEmailView.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
 
   routes: [
+    // ==========================================
+    // ROUTES PUBLIQUES
+    // ==========================================
     {
       path: '/',
       component: PublicLayout,
@@ -33,7 +38,6 @@ const router = createRouter({
         },
       ],
     },
-
     {
       path: '/inscription',
       component: SignupView,
@@ -41,11 +45,21 @@ const router = createRouter({
     {
       path: '/connexion',
       component: LoginView,
+      meta: { guestOnly: true },  // ← redirige si déjà connecté
     },
 
     {
+      path: '/verification-email',
+      component: VerifyEmailView,
+    },
+
+    // ==========================================
+    // ROUTES STRUCTURE (authentification + rôle requis)
+    // ==========================================
+    {
       path: '/structure',
       component: StructureLayout,
+      meta: { requiresAuth: true, role: 'structure' },
       children: [
         {
           path: 'tableau-de-bord',
@@ -63,8 +77,9 @@ const router = createRouter({
           path: 'donneurs',
           component: DonorsView,
         },
-        { path: 'participations', 
-          component: ParticipationsView 
+        {
+          path: 'participations',
+          component: ParticipationsView,
         },
         {
           path: 'profil',
@@ -78,26 +93,35 @@ const router = createRouter({
         },
       ],
     },
+
+    // ==========================================
+    // ROUTES DONNEUR (authentification + rôle requis)
+    // ==========================================
     {
       path: '/donneur',
       component: DonorLayout,
+      meta: { requiresAuth: true, role: 'donneur' },
       children: [
         {
           path: 'tableau-de-bord',
           component: DonorDashboardView,
         },
-        { path: 'sollicitations', 
-          component: SollicitationsView 
+        {
+          path: 'sollicitations',
+          component: SollicitationsView,
         },
-        { path: 'participations',
+        {
+          path: 'participations',
           component: DonorParticipationsView,
           meta: { searchPlaceholder: 'Rechercher sur BloodSen...' },
         },
-        { path: 'historique',
+        {
+          path: 'historique',
           component: HistoriqueView,
           meta: { searchPlaceholder: 'Rechercher une participation...' },
         },
-        { path: 'profil',
+        {
+          path: 'profil',
           component: DonorProfileView,
           meta: { searchPlaceholder: 'Rechercher sur BloodSen...' },
         },
@@ -108,8 +132,77 @@ const router = createRouter({
         },
       ],
     },
-
   ],
+})
+
+// ============================================
+// GUARDS DE NAVIGATION
+// ============================================
+// Fonction exécutée AVANT chaque navigation.
+// Elle vérifie les règles d'accès selon les meta de la route ciblée.
+
+router.beforeEach(async (to, from) => {
+  const auth = useAuthStore()
+
+  if (to.meta.requiresAuth) {
+  
+    const tokenExiste = !!localStorage.getItem('access_token')
+
+    if (!tokenExiste) {
+      return '/connexion'
+    }
+
+    // Si le token existe mais que l'utilisateur n'est pas chargé en mémoire
+    // (cas d'un F5), on le recharge.
+    if (!auth.user) {
+      try {
+        await auth.fetchMe()
+      } catch (e) {
+        // Le token est invalide ou expiré → déconnexion
+        auth.logout()
+        return '/connexion'
+      }
+    }
+
+    // Vérification du rôle (si la route en exige un)
+    if (to.meta.role && auth.role !== to.meta.role) {
+      if (auth.role === 'structure') {
+        return '/structure/tableau-de-bord'
+      } else if (auth.role === 'donneur') {
+        return '/donneur/tableau-de-bord'
+      } else {
+        return '/'
+      }
+    }
+  }
+
+
+  if (to.meta.guestOnly) {
+    const tokenExiste = !!localStorage.getItem('access_token')
+
+    if (tokenExiste) {
+      // Si pas d'user en mémoire, on le charge
+      if (!auth.user) {
+        try {
+          await auth.fetchMe()
+        } catch (e) {
+          // Token invalide → laisser passer vers /connexion
+          auth.logout()
+          return
+        }
+      }
+
+      // Redirection vers le bon espace
+      if (auth.role === 'structure') {
+        return '/structure/tableau-de-bord'
+      } else if (auth.role === 'donneur') {
+        return '/donneur/tableau-de-bord'
+      }
+      return '/'
+    }
+  }
+
+  // Tout est OK, on laisse passer
 })
 
 export default router

@@ -73,50 +73,102 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import StructureSidebar from '@/components/structure/StructureSidebar.vue'
 import StructureBottomNav from '@/components/structure/StructureBottomNav.vue'
 import AppInput from '@/components/AppInput.vue'
-
-defineProps({
-  structureName: {
-    type: String,
-    default: 'CHNU de Fann',
-  },
-  structureSubtitle: {
-    type: String,
-    default: 'Centre Hospitalier National Universitaire • Dakar, Sénégal',
-  },
-  userInitials: {
-    type: String,
-    default: 'MD',
-  },
-  userName: {
-    type: String,
-    default: 'Dr. M. Diop',
-  },
-  userRole: {
-    type: String,
-    default: 'Banque de Sang',
-  },
-  pendingRequestsCount: {
-    type: [Number, String],
-    default: 6,
-  },
-  hasNotifications: {
-    type: Boolean,
-    default: true,
-  },
-})
+import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
 
 const route = useRoute()
+const auth = useAuthStore()
 
-// Une route peut déclarer `meta: { topbarVariant: 'search' }`
-// pour afficher la barre de recherche à la place de l'identité + actions.
+// ==========================================
+// TOPBAR VARIANT (search / default)
+// ==========================================
+
 const topbarVariant = computed(() => route.meta.topbarVariant || 'default')
 
 const searchQuery = ref('')
+
+// ==========================================
+// CHARGEMENT DU PROFIL UTILISATEUR
+// ==========================================
+
+onMounted(async () => {
+  if (!auth.user) {
+    try {
+      await auth.fetchMe()
+    } catch (e) {
+      // L'intercepteur de api.js gère la redirection si nécessaire
+    }
+  }
+})
+
+// ==========================================
+// INFOS DE LA STRUCTURE (depuis le store auth)
+// ==========================================
+
+const structureName = computed(() => {
+  return auth.user?.profil?.nom_structure || 'Structure de santé'
+})
+
+const structureSubtitle = computed(() => {
+  const p = auth.user?.profil
+  if (!p) return ''
+  return `Structure de santé • ${p.ville}, ${p.region}`
+})
+
+// ==========================================
+// INFOS UTILISATEUR (pour le bloc en haut à droite)
+// ==========================================
+
+const userName = computed(() => {
+  // On n'a pas de "nom du responsable" côté backend pour l'instant,
+  // donc on affiche le nom de la structure.
+  return auth.user?.profil?.nom_structure || 'Structure'
+})
+
+const userRole = computed(() => {
+  return 'Structure de santé'
+})
+
+const userInitials = computed(() => {
+  const nom = auth.user?.profil?.nom_structure || ''
+  // On prend les 2 premières lettres significatives
+  const mots = nom.split(' ').filter(m => m.length > 2)
+  if (mots.length >= 2) {
+    return `${mots[0][0]}${mots[1][0]}`.toUpperCase()
+  }
+  if (mots.length === 1) {
+    return mots[0].slice(0, 2).toUpperCase()
+  }
+  return '??'
+})
+
+// ==========================================
+// COMPTEURS (demandes en cours)
+// ==========================================
+
+const pendingRequestsCount = ref(0)
+
+async function chargerCompteurs() {
+  try {
+    const { data } = await api.get('/demandes/')
+    // On compte les demandes dont le statut est 'en_cours'
+    const enCours = Array.isArray(data)
+      ? data.filter(d => d.statut === 'en_cours').length
+      : 0
+    pendingRequestsCount.value = enCours
+  } catch (e) {
+    pendingRequestsCount.value = 0
+  }
+}
+
+onMounted(chargerCompteurs)
+
+const hasNotifications = computed(() => pendingRequestsCount.value > 0)
 </script>
 
 <style scoped>

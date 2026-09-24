@@ -68,9 +68,7 @@
     <AppCard v-else padding="0" class="empty-state">
 
       <div class="empty-icon">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 3C12 3 6 10 6 14.5C6 17.54 8.24 20 12 20C15.76 20 18 17.54 18 14.5C18 10 12 3 12 3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-        </svg>
+        <Droplet :size="32" :stroke-width="2" />
       </div>
 
       <h3>{{ emptyStateMessage }}</h3>
@@ -78,55 +76,121 @@
 
     </AppCard>
 
+        <!-- ==========================================
+         MODAL DE CONFIRMATION
+    =========================================== -->
+    <div
+      v-if="confirmation"
+      class="modal-overlay"
+      @click.self="fermerConfirmation"
+    >
+      <div class="modal-box">
+
+        <div
+          class="modal-icon"
+          :class="confirmation.type === 'accepter' ? 'success' : 'danger'"
+        >
+          <Check v-if="confirmation.type === 'accepter'" :size="32" :stroke-width="3" />
+          <X v-else :size="32" :stroke-width="3" />
+        </div>
+
+        <h3>{{ confirmation.titre }}</h3>
+
+        <p>{{ confirmation.message }}</p>
+
+        <div class="modal-actions">
+          <AppButton
+            variant="outline"
+            :disabled="confirmationEnCours"
+            @click="fermerConfirmation"
+          >
+            Annuler
+          </AppButton>
+
+          <AppButton
+            :variant="confirmation.type === 'accepter' ? 'primary' : 'danger'"
+            :disabled="confirmationEnCours"
+            @click="confirmerAction"
+          >
+            <template v-if="confirmationEnCours">
+              <span class="spinner-small"></span>
+              En cours...
+            </template>
+            <template v-else>
+              {{ confirmation.type === 'accepter' ? 'Accepter' : 'Refuser' }}
+            </template>
+          </AppButton>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useSollicitationsStore } from '@/stores/sollicitations'
+import { Check, X, Droplet } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
 import AppButton from '@/components/AppButton.vue'
 import AppTabs from '@/components/AppTabs.vue'
 
-const activeTab = ref('pending')
+const sollicitationsStore = useSollicitationsStore()
 
-const requests = ref([
-  {
-    id: 'sol-1',
-    facility: 'Hôpital Principal de Dakar',
-    group: 'O+',
-    message: 'Urgence vitale : Nous avons besoin de donneurs O+ pour une intervention chirurgicale complexe prévue ce soir. Votre geste peut sauver une vie.',
-    status: 'pending',
-  },
-  {
-    id: 'sol-2',
-    facility: 'Hôpital Dalal Jamm',
-    group: 'O+',
-    message: 'Besoin urgent : Suite à un accident de la route, nous manquons de poches O+.',
-    status: 'pending',
-  },
-  {
-    id: 'sol-3',
-    facility: 'Centre de Santé Phillippe',
-    group: 'A+',
-    message: 'Collecte programmée pour reconstituer nos réserves régionales.',
-    status: 'accepted',
-  },
-  {
-    id: 'sol-4',
-    facility: 'CHU de Fann',
-    group: 'B+',
-    message: 'Besoin ponctuel pour un patient en oncologie.',
-    status: 'declined',
-  },
-  {
-    id: 'sol-5',
-    facility: 'Hôpital Régional de Thiès',
-    group: 'O+',
-    message: 'Sollicitation expirée faute de réponse dans le délai imparti.',
-    status: 'expired',
-  },
-])
+// ==========================================
+// ÉTAT
+// ==========================================
+
+const activeTab = ref('pending')
+const confirmation = ref(null)
+const confirmationEnCours = ref(false)
+
+// ==========================================
+// CHARGEMENT INITIAL
+// ==========================================
+
+onMounted(async () => {
+  try {
+    await sollicitationsStore.charger()
+  } catch (e) {
+    // Silencieux : le store a déjà l'erreur
+  }
+})
+
+// ==========================================
+// MAPPING DES STATUTS
+// ==========================================
+// API : en_attente | acceptee | refusee | expiree
+// UI  : pending    | accepted | declined | expired
+
+const STATUT_API_VERS_UI = {
+  en_attente: 'pending',
+  acceptee: 'accepted',
+  refusee: 'declined',
+  expiree: 'expired',
+}
+
+// Transforme les sollicitations de l'API en un format adapté à l'UI
+const requests = computed(() => {
+  return (sollicitationsStore.sollicitations || []).map(s => ({
+    id: s.id,
+    facility: s.structure_nom,
+    group: s.groupe_sanguin,
+    message: s.message || '',
+    status: STATUT_API_VERS_UI[s.statut] || 'pending',
+    date: s.date_creation,
+  }))
+})
+
+// ==========================================
+// TABS
+// ==========================================
+
+function countByStatus(status) {
+  return requests.value.filter(r => r.status === status).length
+}
 
 const tabs = computed(() => [
   { value: 'pending', label: 'En attente', count: countByStatus('pending') },
@@ -136,13 +200,9 @@ const tabs = computed(() => [
   { value: 'expired', label: 'Expirées', count: countByStatus('expired') },
 ])
 
-function countByStatus(status) {
-  return requests.value.filter((r) => r.status === status).length
-}
-
 const filteredRequests = computed(() => {
   if (activeTab.value === 'all') return requests.value
-  return requests.value.filter((r) => r.status === activeTab.value)
+  return requests.value.filter(r => r.status === activeTab.value)
 })
 
 const emptyStateMessage = computed(() => {
@@ -156,14 +216,51 @@ const emptyStateMessage = computed(() => {
   return labels[activeTab.value]
 })
 
+
+
+// ==========================================
+// MODAL DE CONFIRMATION
+// ==========================================
+
 function acceptRequest(request) {
-  request.status = 'accepted'
-  // Plus tard : appel API PATCH /sollicitations/:id/accepter
+  confirmation.value = {
+    type: 'accepter',
+    sollicitationId: request.id,
+    titre: 'Accepter cette sollicitation ?',
+    message: 'En acceptant, vous vous engagez à vous présenter au centre de collecte. Vous pourrez ensuite confirmer votre participation avec la structure.',
+  }
 }
 
 function declineRequest(request) {
-  request.status = 'declined'
-  // Plus tard : appel API PATCH /sollicitations/:id/decliner
+  confirmation.value = {
+    type: 'refuser',
+    sollicitationId: request.id,
+    titre: 'Refuser cette sollicitation ?',
+    message: 'En refusant, cette sollicitation sera retirée de votre liste. Vous ne pourrez plus la récupérer.',
+  }
+}
+
+function fermerConfirmation() {
+  if (confirmationEnCours.value) return
+  confirmation.value = null
+}
+
+async function confirmerAction() {
+  if (!confirmation.value) return
+
+  confirmationEnCours.value = true
+  try {
+    if (confirmation.value.type === 'accepter') {
+      await sollicitationsStore.accepter(confirmation.value.sollicitationId)
+    } else {
+      await sollicitationsStore.refuser(confirmation.value.sollicitationId)
+    }
+    confirmation.value = null
+  } catch (e) {
+    // Silencieux
+  } finally {
+    confirmationEnCours.value = false
+  }
 }
 </script>
 
@@ -336,6 +433,120 @@ function declineRequest(request) {
   line-height: 1.6;
 }
 
+/* ========================================
+   MODAL DE CONFIRMATION
+======================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background-color: rgba(11, 25, 43, 0.65);
+
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-box {
+  max-width: 440px;
+  width: 100%;
+
+  padding: 36px 32px;
+
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+
+  text-align: center;
+
+  animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+
+  border-radius: 50%;
+}
+.modal-icon.success {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+.modal-icon.danger {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.modal-box h3 {
+  margin: 0 0 12px;
+
+  color: var(--bloodsen-dark);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.modal-box p {
+  margin: 0 0 28px;
+
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 700px) {
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions :deep(button) {
+    width: 100%;
+  }
+}
 /* ========================================
    RESPONSIVE
 ======================================== */

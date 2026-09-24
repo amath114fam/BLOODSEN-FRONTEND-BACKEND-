@@ -222,3 +222,180 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['email'] = user.email
 
         return token
+
+
+# =====================================================
+# SERIALIZER : modification du profil donneur
+# =====================================================
+
+class ModifierProfilDonneurSerializer(serializers.Serializer):
+    """
+    Valide les données de modification du profil d'un donneur.
+    Seuls certains champs sont modifiables :
+      - nom, prenom
+      - telephone
+      - region, ville, quartier
+      - disponible
+
+    Le groupe sanguin et l'email ne sont PAS modifiables.
+    """
+    nom = serializers.CharField(max_length=100, required=False)
+    prenom = serializers.CharField(max_length=100, required=False)
+    telephone = serializers.CharField(max_length=20, required=False)
+    region = serializers.ChoiceField(choices=REGIONS_CHOICES, required=False)
+    ville = serializers.CharField(max_length=100, required=False)
+    quartier = serializers.CharField(max_length=100, required=False)
+    disponible = serializers.BooleanField(required=False)
+
+    def validate_nom(self, value):
+        try:
+            return valider_nom_propre(value, 'le nom', min_length=2)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+    def validate_prenom(self, value):
+        try:
+            return valider_nom_propre(value, 'le prénom', min_length=2)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+    def validate_telephone(self, value):
+        try:
+            return normaliser_telephone(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+    def validate_ville(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError(
+                "La ville doit contenir au moins 2 caractères."
+            )
+        return value.strip()
+
+    def validate_quartier(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError(
+                "Le quartier doit contenir au moins 2 caractères."
+            )
+        return value.strip()
+
+    def update(self, instance, validated_data):
+        """
+        Met à jour le ProfilDonneur avec les données validées.
+        Seuls les champs fournis sont modifiés.
+        """
+        for champ, valeur in validated_data.items():
+            setattr(instance, champ, valeur)
+        instance.save()
+        return instance
+
+
+# =====================================================
+# SERIALIZER : modification du profil structure
+# =====================================================
+
+class ModifierProfilStructureSerializer(serializers.Serializer):
+    """
+    Valide les données de modification du profil d'une structure.
+    Champs modifiables :
+      - nom_structure
+      - adresse
+      - region, ville, quartier
+
+    L'email ne est PAS modifiable.
+    """
+    nom_structure = serializers.CharField(max_length=200, required=False)
+    adresse = serializers.CharField(max_length=255, required=False)
+    region = serializers.ChoiceField(choices=REGIONS_CHOICES, required=False)
+    ville = serializers.CharField(max_length=100, required=False)
+    quartier = serializers.CharField(max_length=100, required=False)
+
+    def validate_nom_structure(self, value):
+        try:
+            return valider_nom_propre(
+                value, 'le nom de la structure',
+                min_length=3, max_length=200,
+            )
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+    def validate_adresse(self, value):
+        if len(value.strip()) < 5:
+            raise serializers.ValidationError(
+                "L'adresse doit contenir au moins 5 caractères."
+            )
+        return value.strip()
+
+    def validate_ville(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError(
+                "La ville doit contenir au moins 2 caractères."
+            )
+        return value.strip()
+
+    def validate_quartier(self, value):
+        if len(value.strip()) < 2:
+            raise serializers.ValidationError(
+                "Le quartier doit contenir au moins 2 caractères."
+            )
+        return value.strip()
+
+    def update(self, instance, validated_data):
+        for champ, valeur in validated_data.items():
+            setattr(instance, champ, valeur)
+        instance.save()
+        return instance
+
+
+# =====================================================
+# SERIALIZER : changement de mot de passe
+# =====================================================
+
+class ChangerMotDePasseSerializer(serializers.Serializer):
+    """
+    Valide les données de changement de mot de passe.
+
+    Champs attendus :
+      - mot_de_passe_actuel : pour vérifier que c'est bien l'utilisateur
+      - nouveau_mot_de_passe : le nouveau (validé par les règles Django)
+    """
+    mot_de_passe_actuel = serializers.CharField(write_only=True)
+    nouveau_mot_de_passe = serializers.CharField(write_only=True, max_length=128)
+
+    def validate_mot_de_passe_actuel(self, value):
+        """
+        Vérifie que le mot de passe actuel est correct.
+        On accède à l'utilisateur via self.context['request'].user.
+        """
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError(
+                "Le mot de passe actuel est incorrect."
+            )
+        return value
+
+    def validate_nouveau_mot_de_passe(self, value):
+        """
+        Applique les règles de sécurité Django au nouveau mot de passe.
+        """
+        validate_password(value)
+        return value
+
+    def validate(self, data):
+        """
+        Vérification globale : le nouveau doit être différent de l'actuel.
+        """
+        if data['mot_de_passe_actuel'] == data['nouveau_mot_de_passe']:
+            raise serializers.ValidationError(
+                {"nouveau_mot_de_passe": "Le nouveau mot de passe doit être différent de l'ancien."}
+            )
+        return data
+
+    def save(self, **kwargs):
+        """
+        Enregistre le nouveau mot de passe sur l'utilisateur.
+        """
+        user = self.context['request'].user
+        user.set_password(self.validated_data['nouveau_mot_de_passe'])
+        user.save()
+        return user

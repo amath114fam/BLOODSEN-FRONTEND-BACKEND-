@@ -94,7 +94,7 @@
             </thead>
 
             <tbody>
-              <tr v-for="item in participations" :key="item.id">
+              <tr v-for="item in participationsAffichees" :key="item.id">
 
                 <td>
                   <strong>{{ item.facility }}</strong>
@@ -125,17 +125,16 @@
         </div>
 
       </AppCard>
-
       <!-- Engagement -->
       <EngagementCard
-        level="Donneur Argent"
-        progress-label="Prochain palier"
+        :level="niveauLabel"
         :current="engagement.current"
         :target="engagement.target"
-        low-tier-label="ARGENT"
-        high-tier-label="OR (HÉROS)"
         :participations="engagement.participations"
         :points="engagement.points"
+        low-tier-label="BRONZE"
+        high-tier-label="ARGENT (HÉROS)"
+        progress-label="Prochain palier"
       />
 
     </div>
@@ -144,7 +143,9 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
+import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 import AppCard from '@/components/AppCard.vue'
 import AppSelect from '@/components/AppSelect.vue'
@@ -153,11 +154,46 @@ import AppButton from '@/components/AppButton.vue'
 import StatCard from '@/components/StatCard.vue'
 import EngagementCard from '@/components/EngagementCard.vue'
 
-const stats = ref({
-  total: 28,
-  confirmed: 28,
-  medicalRefusal: 1,
+// ==========================================
+// ÉTAT GLOBAL
+// ==========================================
+
+const auth = useAuthStore()
+
+const loading = ref(true)
+const participations = ref([])
+
+// ==========================================
+// CHARGEMENT
+// ==========================================
+
+onMounted(async () => {
+  try {
+    const { data } = await api.get('/participations/')
+    participations.value = data
+  } catch (e) {
+    participations.value = []
+  } finally {
+    loading.value = false
+  }
 })
+
+// ==========================================
+// STATS
+// ==========================================
+
+const stats = computed(() => {
+  const p = participations.value || []
+  return {
+    total: p.length,
+    confirmed: p.filter(x => x.statut === 'confirmee').length,
+    medicalRefusal: p.filter(x => x.statut === 'annulee').length,
+  }
+})
+
+// ==========================================
+// FILTRES
+// ==========================================
 
 const filters = reactive({
   status: '',
@@ -165,36 +201,93 @@ const filters = reactive({
 })
 
 const statusOptions = [
-  { value: 'confirmed', label: 'Confirmée' },
-  { value: 'medical_refusal', label: 'Refus médical' },
-  { value: 'cancelled', label: 'Annulée' },
+  { value: '', label: 'Tous' },
+  { value: 'confirmee', label: 'Confirmée' },
+  { value: 'annulee', label: 'Annulée' },
 ]
 
 const periodOptions = [
+  { value: '', label: 'Toutes les périodes' },
   { value: 'month', label: 'Ce mois' },
   { value: 'year', label: 'Cette année' },
-  { value: 'all', label: 'Toutes les périodes' },
 ]
 
-const participations = ref([
-  { id: 1, facility: 'Hôpital Principal', group: 'O+', date: '12 Oct 2023', location: 'Dakar, Plateau', status: 'confirmed' },
-  { id: 2, facility: 'Centre de Santé Phillippe', group: 'A+', date: '24 Oct 2023', location: 'Yoff, Dakar', status: 'confirmed' },
-  { id: 3, facility: 'Hôpital Dalal Jamm', group: 'O+', date: '05 Sep 2023', location: 'Guédiawaye', status: 'confirmed' },
-  { id: 4, facility: 'Clinique des Madeleines', group: 'B-', date: '20 Août 2023', location: 'Dakar, Centre', status: 'confirmed' },
-  { id: 5, facility: "Hôpital Militaire d'Ouakam", group: 'O+', date: '15 Juil 2023', location: 'Ouakam, Dakar', status: 'confirmed' },
-])
+// ==========================================
+// LISTE FILTRÉE
+// ==========================================
 
-const engagement = ref({
-  current: 24,
-  target: 30,
-  participations: 28,
-  points: 1420,
+const participationsFiltrees = computed(() => {
+  let resultat = participations.value || []
+
+  // Filtre statut
+  if (filters.status) {
+    resultat = resultat.filter(p => p.statut === filters.status)
+  }
+
+  // Filtre période
+  if (filters.period === 'month') {
+    const maintenant = new Date()
+    const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1)
+    resultat = resultat.filter(p => new Date(p.date_confirmation) >= debutMois)
+  } else if (filters.period === 'year') {
+    const debutAnnee = new Date(new Date().getFullYear(), 0, 1)
+    resultat = resultat.filter(p => new Date(p.date_confirmation) >= debutAnnee)
+  }
+
+  return resultat
 })
+
+// ==========================================
+// TRANSFORMATION POUR L'AFFICHAGE
+// ==========================================
+
+const participationsAffichees = computed(() => {
+  return participationsFiltrees.value.map(p => ({
+    id: p.id,
+    facility: p.structure_nom,
+    group: p.demande_groupe_sanguin || p.donneur_groupe_sanguin,
+    date: formaterDate(p.date_confirmation),
+    location: `${p.structure_ville}, ${p.structure_region}`,
+    status: p.statut === 'confirmee' ? 'confirmed' : 'cancelled',
+  }))
+})
+
+// ==========================================
+// ENGAGEMENT
+// ==========================================
+
+const engagement = computed(() => {
+  const dons = stats.value.confirmed || 0
+  const currentLevel = Math.min(Math.floor(dons / 5) + 1, 5)
+  const target = Math.min((currentLevel + 1) * 5, 30)
+
+  // Le points_total vient du backend (source de vérité unique).
+  // On ne le recalcule JAMAIS côté frontend.
+  const points = auth.user?.profil?.points_total || 0
+
+  return {
+    current: dons,
+    target,
+    participations: stats.value.total,
+    points,
+  }
+})
+
+// ==========================================
+// HELPERS
+// ==========================================
+
+function formaterDate(dateIso) {
+  if (!dateIso) return '—'
+  const date = new Date(dateIso)
+  const options = { day: '2-digit', month: 'short', year: 'numeric' }
+  return date.toLocaleDateString('fr-FR', options)
+}
 
 function statusVariant(status) {
   if (status === 'confirmed') return 'success'
   if (status === 'medical_refusal') return 'danger'
-  return 'default' // cancelled
+  return 'default'
 }
 
 function statusLabel(status) {
@@ -203,7 +296,15 @@ function statusLabel(status) {
   return 'Annulée'
 }
 
-// TODO : remplacer stats/participations/engagement par un appel API réel
+// Libellé du niveau selon le nombre de dons
+const niveauLabel = computed(() => {
+  const dons = stats.value.confirmed || 0
+  if (dons >= 20) return 'Donneur Héros'
+  if (dons >= 15) return 'Donneur Élite'
+  if (dons >= 10) return 'Donneur Engagé'
+  if (dons >= 5) return 'Donneur Régulier'
+  return 'Donneur Débutant'
+})
 </script>
 
 <style scoped>

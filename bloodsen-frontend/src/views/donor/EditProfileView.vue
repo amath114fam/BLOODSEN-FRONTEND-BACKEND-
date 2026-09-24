@@ -7,6 +7,9 @@
     </div>
 
     <form class="edit-form" @submit.prevent="handleSubmit">
+      <div v-if="erreurGlobale" class="form-error">
+        {{ erreurGlobale }}
+      </div>
 
       <div class="edit-grid">
 
@@ -47,7 +50,7 @@
               <div class="phone-row">
                 <AppInput
                   id="phone-prefix"
-                  v-model="form.phonePrefix"
+                  model-value="+221"
                   class="phone-prefix"
                   disabled
                 />
@@ -59,10 +62,12 @@
               </div>
             </div>
 
-            <AppInput
+            <AppSelect
               id="region"
               v-model="form.region"
               label="Région"
+              placeholder="Sélectionnez une région"
+              :options="regionsOptions"
             />
 
             <AppInput
@@ -155,24 +160,19 @@
 
             <div class="card-divider"></div>
 
-            <div class="metrics-grid">
+              <div class="metrics-grid">
 
-              <div class="metric-box">
-                <span class="metric-label">Dons confirmés</span>
-                <strong class="metric-value">{{ engagement.donations }} dons</strong>
+                <div class="metric-box">
+                  <span class="metric-label">Groupe sanguin</span>
+                  <strong class="metric-value">{{ groupeSanguin }}</strong>
+                </div>
+
+                <div class="metric-box">
+                  <span class="metric-label">Points d'engagement</span>
+                  <strong class="metric-value highlight">{{ pointsEngagement }} pts</strong>
+                </div>
+
               </div>
-
-              <div class="metric-box">
-                <span class="metric-label">Participations</span>
-                <strong class="metric-value">{{ engagement.participations }}</strong>
-              </div>
-
-              <div class="metric-box">
-                <span class="metric-label">Points d'engagement</span>
-                <strong class="metric-value highlight">{{ engagement.points }} pts</strong>
-              </div>
-
-            </div>
 
           </AppCard>
 
@@ -193,12 +193,14 @@
 
             <div class="card-divider"></div>
 
-            <AppInput
-              id="email"
-              v-model="form.email"
-              type="email"
-              label="Adresse email"
-            />
+              <AppInput
+                id="email"
+                :model-value="emailUtilisateur"
+                type="email"
+                label="Adresse email"
+                disabled
+                hint="L'email ne peut pas être modifié."
+              />
 
           </AppCard>
 
@@ -219,26 +221,52 @@
 
             <AppInput
               id="current-password"
-              v-model="form.currentPassword"
+              v-model="passwordForm.actuel"
               type="password"
               label="Mot de passe actuel"
             />
 
             <AppInput
               id="new-password"
-              v-model="form.newPassword"
+              v-model="passwordForm.nouveau"
               type="password"
               label="Nouveau mot de passe"
               placeholder="Minimum 8 caractères"
             />
 
+            <AppInput
+              id="confirm-password"
+              v-model="passwordForm.confirmation"
+              type="password"
+              label="Confirmer le nouveau mot de passe"
+              placeholder="Répéter le nouveau mot de passe"
+            />
+
+            <!-- Messages d'erreur / succès -->
+            <div v-if="passwordErreur" class="password-message error">
+              <AlertCircle :size="18" :stroke-width="2" />
+              <span>{{ passwordErreur }}</span>
+            </div>
+
+            <div v-if="passwordSucces" class="password-message success">
+              <CheckCircle :size="18" :stroke-width="2" />
+              <span>{{ passwordSucces }}</span>
+            </div>
+
             <AppButton
               type="button"
               variant="secondary"
               class="update-password-button"
+              :disabled="passwordLoading"
               @click="updatePassword"
             >
-              Mettre à jour le mot de passe
+              <template v-if="passwordLoading">
+                <span class="spinner-small"></span>
+                Mise à jour...
+              </template>
+              <template v-else>
+                Mettre à jour le mot de passe
+              </template>
             </AppButton>
 
           </AppCard>
@@ -272,45 +300,195 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
+import { CheckCircle, AlertCircle } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
+import AppSelect from '@/components/AppSelect.vue'
 import AppButton from '@/components/AppButton.vue'
+import { REGIONS_SENEGAL } from '@/constants/regions'
 
 const router = useRouter()
+const auth = useAuthStore()
+
+// ==========================================
+// ÉTAT GLOBAL
+// ==========================================
+
+const loading = ref(false)
+const erreurGlobale = ref('')
+const erreursBackend = ref({})
+
+// ==========================================
+// FORMULAIRE
+// ==========================================
 
 const form = reactive({
-  lastName: 'Sall',
-  firstName: 'Abdoulaye',
-  phonePrefix: '+221',
-  phoneNumber: '77 452 18 90',
-  region: 'Dakar',
-  district: 'Dakar',
-  city: 'Médina',
+  lastName: '',
+  firstName: '',
+  phoneNumber: '',   // partie locale du numéro (sans +221)
+  region: '',
+  district: '',
+  city: '',
   availability: 'available',
-  email: 'abdoulaye.sall@gmail.com',
-  currentPassword: '',
-  newPassword: '',
 })
 
-const engagement = reactive({
-  donations: 6,
-  participations: 8,
-  points: 320,
+// ==========================================
+// PRÉ-REMPLISSAGE
+// ==========================================
+
+onMounted(async () => {
+  // S'assurer que le profil est chargé
+  if (!auth.user) {
+    try {
+      await auth.fetchMe()
+    } catch (e) {
+      // Silencieux
+    }
+  }
+
+  const profil = auth.user?.profil || {}
+
+  form.lastName = profil.nom || ''
+  form.firstName = profil.prenom || ''
+  form.region = profil.region || ''
+  form.city = profil.ville || ''
+  form.district = profil.quartier || ''
+  form.availability = profil.disponible ? 'available' : 'unavailable'
+
+  // Extraire la partie locale du téléphone (sans +221)
+  if (profil.telephone) {
+    form.phoneNumber = profil.telephone.replace('+221', '')
+  }
 })
 
-function updatePassword() {
-  console.log('Mise à jour du mot de passe...')
-  // Plus tard : appel API PATCH /donneur/mot-de-passe
+// ==========================================
+// DONNÉES DÉRIVÉES
+// ==========================================
+
+const emailUtilisateur = computed(() => auth.user?.email || '—')
+
+const regionsOptions = computed(() =>
+  REGIONS_SENEGAL.map(r => ({ value: r, label: r }))
+)
+
+const groupeSanguin = computed(() => auth.user?.profil?.groupe_sanguin || '—')
+
+const pointsEngagement = computed(() => auth.user?.profil?.points_total || 0)
+
+// ==========================================
+// SOUMISSION
+// ==========================================
+
+async function handleSubmit() {
+  erreurGlobale.value = ''
+  erreursBackend.value = {}
+
+  // Construire les données à envoyer
+  // On envoie seulement les champs modifiés (PATCH)
+  const donnees = {
+    nom: form.lastName,
+    prenom: form.firstName,
+    telephone: form.phoneNumber,
+    region: form.region,
+    ville: form.city,
+    quartier: form.district,
+    disponible: form.availability === 'available',
+  }
+
+  loading.value = true
+  try {
+    await api.patch('/auth/moi/', donnees)
+
+    // Recharger le profil dans le store pour refléter les changements
+    await auth.fetchMe()
+
+    // Rediriger vers la page de profil
+    router.push('/donneur/profil')
+  } catch (error) {
+    if (error.response?.status === 400) {
+      erreursBackend.value = error.response.data
+    } else {
+      erreurGlobale.value = 'Une erreur est survenue. Veuillez réessayer.'
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
-function handleSubmit() {
-  console.log('Profil donneur mis à jour :', form)
+// ==========================================
+// CHANGEMENT DE MOT DE PASSE
+// ==========================================
 
-  // Plus tard : appel API PATCH /donneur/profil
-  router.push('/donneur/profil')
+const passwordLoading = ref(false)
+const passwordErreur = ref('')
+const passwordSucces = ref('')
+
+// État local pour les 3 champs du formulaire de mot de passe
+const passwordForm = reactive({
+  actuel: '',
+  nouveau: '',
+  confirmation: '',
+})
+
+async function updatePassword() {
+  passwordErreur.value = ''
+  passwordSucces.value = ''
+
+  // Vérifications côté frontend
+  if (!passwordForm.actuel || !passwordForm.nouveau || !passwordForm.confirmation) {
+    passwordErreur.value = 'Tous les champs sont obligatoires.'
+    return
+  }
+
+  if (passwordForm.nouveau !== passwordForm.confirmation) {
+    passwordErreur.value = 'Les deux nouveaux mots de passe ne correspondent pas.'
+    return
+  }
+
+  if (passwordForm.nouveau.length < 8) {
+    passwordErreur.value = 'Le nouveau mot de passe doit contenir au moins 8 caractères.'
+    return
+  }
+
+  passwordLoading.value = true
+  try {
+    await api.post('/auth/changer-mot-de-passe/', {
+      mot_de_passe_actuel: passwordForm.actuel,
+      nouveau_mot_de_passe: passwordForm.nouveau,
+    })
+
+    passwordSucces.value = 'Mot de passe mis à jour avec succès.'
+
+    // Vider les champs
+    passwordForm.actuel = ''
+    passwordForm.nouveau = ''
+    passwordForm.confirmation = ''
+
+    // Faire disparaître le message après 5 secondes
+    setTimeout(() => {
+      passwordSucces.value = ''
+    }, 5000)
+  } catch (error) {
+    if (error.response?.status === 400) {
+      const data = error.response.data
+      if (data.mot_de_passe_actuel) {
+        passwordErreur.value = data.mot_de_passe_actuel[0]
+      } else if (data.nouveau_mot_de_passe) {
+        passwordErreur.value = data.nouveau_mot_de_passe[0]
+      } else {
+        passwordErreur.value = 'Une erreur est survenue.'
+      }
+    } else {
+      passwordErreur.value = 'Une erreur est survenue. Veuillez réessayer.'
+    }
+  } finally {
+    passwordLoading.value = false
+  }
 }
 </script>
 
@@ -570,6 +748,58 @@ function handleSubmit() {
   gap: 12px;
 }
 
+.form-error {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+
+  background-color: #fde8e8;
+  border: 1px solid #f5c2c7;
+  border-radius: 6px;
+
+  color: #b42318;
+  font-size: 14px;
+}
+
+.password-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 14px;
+
+  border-radius: 6px;
+
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.password-message.error {
+  background-color: #fde8e8;
+  border: 1px solid #f5c2c7;
+  color: #b42318;
+}
+
+.password-message.success {
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  color: #059669;
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: currentColor;
+  border-radius: 50%;
+
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 /* ========================================
    RESPONSIVE
 ======================================== */

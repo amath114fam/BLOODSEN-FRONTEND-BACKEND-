@@ -8,9 +8,14 @@
         <p>Gérez les informations de votre structure.</p>
       </div>
 
-      <AppButton variant="primary" to="/structure/profil/modifier">
+      <AppButton v-if="!afficherMessageSucces" variant="primary" to="/structure/profil/modifier">
         Modifier mon profil
       </AppButton>
+
+      <div v-if="afficherMessageSucces" class="success-banner">
+        <CheckCircle :size="20" :stroke-width="2.5" class="success-icon" />
+        <span>Votre profil a été mis à jour avec succès.</span>
+      </div>
 
     </div>
 
@@ -67,7 +72,7 @@
           </svg>
         </span>
 
-        <h3>Sécurité et accès</h3>
+        <h3>Email</h3>
       </div>
 
       <div class="card-divider"></div>
@@ -78,25 +83,7 @@
           <span class="info-label">Adresse email</span>
           <div class="info-value-row">
             <strong class="info-value">{{ account.email }}</strong>
-            <AppBadge v-if="account.emailVerified" variant="info">
-              VÉRIFIÉ
-            </AppBadge>
           </div>
-        </div>
-
-        <div class="info-item">
-          <span class="info-label">Rôle du compte</span>
-          <strong class="info-value">{{ account.role }}</strong>
-        </div>
-
-        <div class="info-item">
-          <span class="info-label">Date de création</span>
-          <strong class="info-value">{{ account.createdAt }}</strong>
-        </div>
-
-        <div class="info-item">
-          <span class="info-label">Dernière connexion</span>
-          <strong class="info-value">{{ account.lastLogin }}</strong>
         </div>
 
       </div>
@@ -107,28 +94,66 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { CheckCircle } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
-import AppBadge from '@/components/AppBadge.vue'
 import AppButton from '@/components/AppButton.vue'
 
-const structure = ref({
-  name: 'Hôpital Principal de Dakar (HPD)',
-  region: 'Dakar',
-  city: 'Dakar',
-  district: 'Médina',
+const auth = useAuthStore()
+
+const route = useRoute()
+const router = useRouter()
+
+// Affiche le message de succès si on vient de la page de modification
+const afficherMessageSucces = ref(route.query.updated === '1')
+
+// Cache le message après 5 secondes et retire le paramètre de l'URL
+onMounted(() => {
+  if (afficherMessageSucces.value) {
+    setTimeout(() => {
+      afficherMessageSucces.value = false
+      router.replace({ query: {} })   // retire le ?updated=1
+    }, 5000)
+  }
 })
 
-const account = ref({
-  email: 'contact@hpd.sn',
-  emailVerified: true,
-  role: 'Structure Sanitaire Agréée',
-  createdAt: '14 Mars 2023',
-  lastLogin: "Aujourd'hui, à 09:42",
+// ==========================================
+// CHARGEMENT DU PROFIL
+// ==========================================
+
+onMounted(async () => {
+  if (!auth.user) {
+    try {
+      await auth.fetchMe()
+    } catch (e) {
+      // Silencieux
+    }
+  }
 })
 
-// TODO : remplacer par un appel API GET /structure/profil
+// ==========================================
+// DONNÉES DÉRIVÉES
+// ==========================================
+
+const profil = computed(() => auth.user?.profil || {})
+
+// Informations de la structure
+const structure = computed(() => ({
+  name: profil.value.nom_structure || '—',
+  region: profil.value.region || '—',
+  city: profil.value.ville || '—',
+  district: profil.value.quartier || '—',
+}))
+
+// Informations du compte
+const account = computed(() => ({
+  email: auth.user?.email || '—',
+  createdAt: '—',        // pas encore disponible dans l'API
+  lastLogin: '—',        // pas encore disponible dans l'API
+}))
 </script>
 
 <style scoped>
@@ -259,7 +284,43 @@ const account = ref({
   align-items: center;
   gap: 10px;
 }
+/* ========================================
+   BANDEAU DE SUCCÈS
+======================================== */
 
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 14px 18px;
+
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+
+  color: #059669;
+  font-size: 14px;
+  font-weight: 600;
+
+  animation: slideDown 0.3s ease;
+}
+
+.success-icon {
+  flex-shrink: 0;
+  color: #059669;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 /* ========================================
    RESPONSIVE
 ======================================== */

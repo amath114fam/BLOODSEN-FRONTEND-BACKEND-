@@ -15,7 +15,6 @@ import DonorLayout from '@/layouts/DonorLayout.vue'
 import DonorDashboardView from '@/views/donor/DashboardView.vue'
 import SollicitationsView from '@/views/donor/SollicitationsView.vue'
 import DonorParticipationsView from '@/views/donor/ParticipationsView.vue'
-import HistoriqueView from '@/views/donor/HistoriqueView.vue'
 import DonorProfileView from '@/views/donor/ProfileView.vue'
 import DonorEditProfileView from '@/views/donor/EditProfileView.vue'
 import VerifyEmailView from '@/views/public/VerifyEmailView.vue'
@@ -112,11 +111,6 @@ const router = createRouter({
           path: 'participations',
           component: DonorParticipationsView,
           meta: { searchPlaceholder: 'Rechercher sur BloodSen...' },
-        },
-        {
-          path: 'historique',
-          component: HistoriqueView,
-          meta: { searchPlaceholder: 'Rechercher une participation...' },
         },
         {
           path: 'profil',

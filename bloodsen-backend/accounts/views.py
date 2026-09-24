@@ -13,6 +13,9 @@ from .serializers import (
     InscriptionStructureSerializer,
     VerificationTokenSerializer,
     EmailTokenObtainPairSerializer,
+    ModifierProfilDonneurSerializer,
+    ModifierProfilStructureSerializer,
+    ChangerMotDePasseSerializer, 
 )
 from .utils import envoyer_email_verification
 
@@ -244,3 +247,111 @@ class MoiView(APIView):
             data["profil"] = None
 
         return Response(data)
+
+    def patch(self, request):
+        """
+        PATCH : modification du profil (donneur OU structure).
+        """
+        role = request.user.role
+
+        # ==========================================
+        # CAS DONNEUR
+        # ==========================================
+        if role == 'donneur':
+            profil = request.user.profil_donneur
+            serializer = ModifierProfilDonneurSerializer(
+                instance=profil,
+                data=request.data,
+                partial=True,
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            profil.refresh_from_db()
+
+            return Response(
+                {
+                    "message": "Profil mis à jour avec succès.",
+                    "profil": {
+                        "nom": profil.nom,
+                        "prenom": profil.prenom,
+                        "telephone": profil.telephone,
+                        "groupe_sanguin": profil.groupe_sanguin,
+                        "region": profil.region,
+                        "ville": profil.ville,
+                        "quartier": profil.quartier,
+                        "disponible": profil.disponible,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # ==========================================
+        # CAS STRUCTURE
+        # ==========================================
+        if role == 'structure':
+            profil = request.user.profil_structure
+            serializer = ModifierProfilStructureSerializer(
+                instance=profil,
+                data=request.data,
+                partial=True,
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            profil.refresh_from_db()
+
+            return Response(
+                {
+                    "message": "Profil mis à jour avec succès.",
+                    "profil": {
+                        "nom_structure": profil.nom_structure,
+                        "adresse": profil.adresse,
+                        "region": profil.region,
+                        "ville": profil.ville,
+                        "quartier": profil.quartier,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # ==========================================
+        # CAS NON SUPPORTÉ (admin)
+        # ==========================================
+        return Response(
+            {"detail": "Ce type de compte ne peut pas modifier son profil via cet endpoint."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+# ============================================================
+# VUE 6 : Changement de mot de passe
+# ============================================================
+
+@extend_schema(
+    request=ChangerMotDePasseSerializer,
+    responses=None,
+    description="Permet à un utilisateur connecté de changer son mot de passe.",
+)
+class ChangerMotDePasseView(APIView):
+    """
+    POST /api/auth/changer-mot-de-passe/
+
+    Vérifie le mot de passe actuel avant d'accepter le nouveau.
+    Accessible à tous les utilisateurs connectés (donneur + structure).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # 1. Valider les données (le serializer vérifie le mot de passe actuel)
+        serializer = ChangerMotDePasseSerializer(
+            data=request.data,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        # 2. Sauvegarder le nouveau mot de passe
+        serializer.save()
+
+        # 3. Réponse de succès
+        return Response(
+            {"message": "Mot de passe mis à jour avec succès."},
+            status=status.HTTP_200_OK,
+        )

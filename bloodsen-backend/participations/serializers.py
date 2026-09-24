@@ -8,10 +8,7 @@ from demandes.models import Sollicitation
 
 class ParticipationSerializer(serializers.ModelSerializer):
     """
-    Serializer utilisé pour LIRE une participation.
-
-    Comme pour les autres serializers, on enrichit avec des infos
-    utiles au frontend : donneur, structure, demande associée.
+    Serializer utilisé pour LIRE une participation (vue par le donneur).
     """
 
     donneur_nom = serializers.CharField(
@@ -26,12 +23,40 @@ class ParticipationSerializer(serializers.ModelSerializer):
         source='sollicitation.donneur.groupe_sanguin',
         read_only=True,
     )
+
     demande_id = serializers.IntegerField(
         source='sollicitation.demande.id',
         read_only=True,
     )
+    demande_reference = serializers.SerializerMethodField()
+    demande_groupe_sanguin = serializers.CharField(
+        source='sollicitation.demande.groupe_sanguin',
+        read_only=True,
+    )
+    demande_message = serializers.CharField(
+        source='sollicitation.demande.message',
+        read_only=True,
+    )
+
     structure_nom = serializers.CharField(
         source='sollicitation.demande.structure.nom_structure',
+        read_only=True,
+    )
+    structure_ville = serializers.CharField(
+        source='sollicitation.demande.structure.ville',
+        read_only=True,
+    )
+    structure_region = serializers.CharField(
+        source='sollicitation.demande.structure.region',
+        read_only=True,
+    )
+
+    date_sollicitation = serializers.DateTimeField(
+        source='sollicitation.date_creation',
+        read_only=True,
+    )
+    date_reponse = serializers.DateTimeField(
+        source='sollicitation.date_reponse',
         read_only=True,
     )
 
@@ -43,10 +68,20 @@ class ParticipationSerializer(serializers.ModelSerializer):
             'donneur_prenom',
             'donneur_groupe_sanguin',
             'demande_id',
+            'demande_reference',
+            'demande_groupe_sanguin',
+            'demande_message',
             'structure_nom',
+            'structure_ville',
+            'structure_region',
+            'date_sollicitation',
+            'date_reponse',
             'statut',
             'date_confirmation',
         ]
+
+    def get_demande_reference(self, obj):
+        return f"#DS-{obj.sollicitation.demande.id:04d}"
 
 # =====================================================
 # SERIALIZER : participations d'une structure

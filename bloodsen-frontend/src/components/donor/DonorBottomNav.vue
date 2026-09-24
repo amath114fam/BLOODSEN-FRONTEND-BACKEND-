@@ -45,21 +45,6 @@
       <span class="bottom-nav-label">Particip.</span>
     </router-link>
 
-    <router-link
-      to="/donneur/historique"
-      class="bottom-nav-item"
-      active-class="active"
-    >
-      <span class="bottom-nav-icon">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 3V8H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M3.5 13C4.4 18 8.8 21.5 13.5 21C18.7 20.5 22.5 15.8 22 10.5C21.5 5.3 16.8 1.5 11.5 2C7.9 2.4 4.9 4.8 3.5 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <path d="M12 7V12L15.5 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </span>
-      <span class="bottom-nav-label">Historique</span>
-    </router-link>
-
   </nav>
 </template>
 

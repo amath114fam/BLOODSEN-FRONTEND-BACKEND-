@@ -20,6 +20,8 @@ import DonorProfileView from '@/views/donor/ProfileView.vue'
 import DonorEditProfileView from '@/views/donor/EditProfileView.vue'
 import VerifyEmailView from '@/views/public/VerifyEmailView.vue'
 import { useAuthStore } from '@/stores/auth'
+import ForgotPasswordView from '@/views/public/ForgotPasswordView.vue'
+import ResetPasswordView from '@/views/public/ResetPasswordView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -51,6 +53,14 @@ const router = createRouter({
     {
       path: '/verification-email',
       component: VerifyEmailView,
+    },
+    {
+      path: '/mot-de-passe-oublie',
+      component: ForgotPasswordView,
+    },
+    {
+      path: '/reinitialiser-mot-de-passe',
+      component: ResetPasswordView,
     },
 
     // ==========================================

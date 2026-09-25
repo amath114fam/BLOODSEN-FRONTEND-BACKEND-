@@ -41,7 +41,9 @@
              ÉCRAN DE SUCCÈS (après inscription)
         =========================================== -->
         <div v-if="inscriptionReussie" class="signup-success">
-          <div class="success-icon">✓</div>
+          <div class="success-icon">
+            <CheckCircle :size="32" :stroke-width="2.5" />
+          </div>
           <h1>Inscription réussie !</h1>
           <p>
             Un email de vérification a été envoyé à
@@ -377,6 +379,8 @@
 <script setup>
 import { reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { CheckCircle } from 'lucide-vue-next'
+
 
 import AppButton from '@/components/AppButton.vue'
 import AppInput from '@/components/AppInput.vue'

@@ -7,7 +7,8 @@ from .views import (
     RefuserSollicitationView,
     MesSollicitationsView,
     AnnulerDemandeView,
-    DetailDemandeView
+    DetailDemandeView,
+    DetailSollicitationView
 )
 
 urlpatterns = [
@@ -29,4 +30,5 @@ urlpatterns = [
         name='refuser-sollicitation',
     ),
     path('sollicitations/', MesSollicitationsView.as_view(), name='mes-sollicitations'),
+    path('sollicitations/<int:pk>/', DetailSollicitationView.as_view(), name='detail-sollicitation',),
 ]

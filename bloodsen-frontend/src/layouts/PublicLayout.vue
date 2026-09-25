@@ -37,7 +37,8 @@
             @click="isMenuOpen = !isMenuOpen"
             :aria-label="isMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'"
             >
-            {{ isMenuOpen ? '✕' : '☰' }}
+            <X v-if="isMenuOpen" :size="24" :stroke-width="2" />
+            <Menu v-else :size="24" :stroke-width="2" />
             </button>
 
         </div>
@@ -280,6 +281,7 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterView } from 'vue-router'
+import { X, Menu } from 'lucide-vue-next'
 
 const isMenuOpen = ref(false)
 </script>

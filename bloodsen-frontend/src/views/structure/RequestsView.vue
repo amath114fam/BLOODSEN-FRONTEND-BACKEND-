@@ -261,7 +261,9 @@
     =========================================== -->
     <div v-if="demandeAnnulation" class="modal-overlay" @click.self="fermerConfirmation">
       <div class="modal-box">
-        <div class="modal-icon danger">⚠️</div>
+        <div class="modal-icon danger">
+          <AlertTriangle :size="32" :stroke-width="2.5" />
+        </div>
         <h3>Annuler cette demande ?</h3>
         <p>
           La demande <strong>#DS-{{ demandeAnnulation.id.toString().padStart(4, '0') }}</strong>
@@ -299,6 +301,7 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import { useDemandesStore } from '@/stores/demandes'
+import { AlertTriangle } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
@@ -885,13 +888,11 @@ async function confirmerAnnulation() {
   align-items: center;
   justify-content: center;
 
-  width: 56px;
-  height: 56px;
-  margin-bottom: 16px;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
 
   border-radius: 50%;
-
-  font-size: 28px;
 }
 
 .modal-icon.danger {

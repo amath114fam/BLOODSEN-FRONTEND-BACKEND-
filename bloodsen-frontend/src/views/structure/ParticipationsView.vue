@@ -236,12 +236,66 @@
 
     </AppCard>
 
+
+        <!-- ==========================================
+         MODAL DE CONFIRMATION
+    =========================================== -->
+    <div
+      v-if="confirmation"
+      class="modal-overlay"
+      @click.self="fermerConfirmation"
+    >
+      <div class="modal-box">
+
+        <div class="modal-icon success">
+          <CheckCircle :size="32" :stroke-width="3" />
+        </div>
+
+        <h3>Confirmer cette participation ?</h3>
+
+        <p>
+          Vous confirmez que
+          <strong>{{ confirmation.donneurPrenom }} {{ confirmation.donneurNom }}</strong>
+          s'est bien présenté et a effectué son don.
+          <br><br>
+          Cette action attribuera <strong>100 points</strong> au donneur
+          et pourra clôturer la demande si le nombre de poches est atteint.
+        </p>
+
+        <div class="modal-actions">
+          <AppButton
+            variant="outline"
+            :disabled="confirmationEnCours"
+            @click="fermerConfirmation"
+          >
+            Annuler
+          </AppButton>
+
+          <AppButton
+            variant="primary"
+            :disabled="confirmationEnCours"
+            @click="confirmerAction"
+          >
+            <template v-if="confirmationEnCours">
+              <span class="spinner-small"></span>
+              Confirmation...
+            </template>
+            <template v-else>
+              Confirmer
+            </template>
+          </AppButton>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import api from '@/services/api'
+import { CheckCircle } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
@@ -413,14 +467,38 @@ function statusLabel(status) {
 // ACTIONS
 // ==========================================
 
-async function confirmParticipation(item) {
+// ==========================================
+// MODAL DE CONFIRMATION
+// ==========================================
+
+const confirmation = ref(null)
+const confirmationEnCours = ref(false)
+
+function confirmParticipation(item) {
+  confirmation.value = {
+    sollicitationId: item.id,
+    donneurPrenom: item.donneur_prenom,
+    donneurNom: item.donneur_nom,
+  }
+}
+
+function fermerConfirmation() {
+  if (confirmationEnCours.value) return
+  confirmation.value = null
+}
+
+async function confirmerAction() {
+  if (!confirmation.value) return
+
+  confirmationEnCours.value = true
   try {
-    // On confirme la participation liée à cette sollicitation
-    await api.post(`/sollicitations/${item.id}/confirmer/`)
-    // On recharge la liste pour refléter le changement
+    await api.post(`/sollicitations/${confirmation.value.sollicitationId}/confirmer/`)
     await chargerParticipations()
+    confirmation.value = null
   } catch (e) {
-    // Silencieux : on pourrait afficher une erreur à l'utilisateur
+    // Silencieux
+  } finally {
+    confirmationEnCours.value = false
   }
 }
 </script>
@@ -665,6 +743,121 @@ async function confirmParticipation(item) {
 .pagination button:disabled {
   color: #c3c9d1;
   cursor: not-allowed;
+}
+
+/* ========================================
+   MODAL DE CONFIRMATION
+======================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background-color: rgba(11, 25, 43, 0.65);
+
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-box {
+  max-width: 480px;
+  width: 100%;
+
+  padding: 36px 32px;
+
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+
+  text-align: center;
+
+  animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 64px;
+  height: 64px;
+  margin-bottom: 20px;
+
+  border-radius: 50%;
+}
+
+.modal-icon.success {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+.modal-box h3 {
+  margin: 0 0 12px;
+
+  color: var(--bloodsen-dark);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.modal-box p {
+  margin: 0 0 28px;
+
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.modal-box p strong {
+  color: var(--bloodsen-dark);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 700px) {
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions :deep(button) {
+    width: 100%;
+  }
 }
 
 /* RESPONSIVE */

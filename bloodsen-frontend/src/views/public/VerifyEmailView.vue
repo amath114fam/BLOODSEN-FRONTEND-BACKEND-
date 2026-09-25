@@ -16,7 +16,9 @@
            ÉTAT 2 : SUCCÈS
       =========================================== -->
       <div v-else-if="etat === 'succes'" class="verify-content">
-        <div class="icon-success">✓</div>
+        <div class="icon-success">
+          <CheckCircle :size="32" :stroke-width="2.5" />
+        </div>
         <h1>Compte activé !</h1>
         <p>
           Votre adresse email a bien été vérifiée.
@@ -29,7 +31,9 @@
            ÉTAT 3 : ERREUR
       =========================================== -->
       <div v-else-if="etat === 'erreur'" class="verify-content">
-        <div class="icon-error">✕</div>
+        <div class="icon-error">
+          <XCircle :size="32" :stroke-width="2.5" />
+        </div>
         <h1>Vérification impossible</h1>
         <p>{{ messageErreur }}</p>
         <router-link to="/inscription" class="btn-primary">
@@ -46,6 +50,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { CheckCircle, XCircle } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()

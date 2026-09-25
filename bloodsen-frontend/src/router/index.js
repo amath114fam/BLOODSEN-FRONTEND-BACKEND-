@@ -14,6 +14,7 @@ import EditProfileView from '@/views/structure/EditProfileView.vue'
 import DonorLayout from '@/layouts/DonorLayout.vue'
 import DonorDashboardView from '@/views/donor/DashboardView.vue'
 import SollicitationsView from '@/views/donor/SollicitationsView.vue'
+import SollicitationDetailView from '@/views/donor/SollicitationDetailView.vue'
 import DonorParticipationsView from '@/views/donor/ParticipationsView.vue'
 import DonorProfileView from '@/views/donor/ProfileView.vue'
 import DonorEditProfileView from '@/views/donor/EditProfileView.vue'
@@ -106,6 +107,10 @@ const router = createRouter({
         {
           path: 'sollicitations',
           component: SollicitationsView,
+        },
+        {
+          path: 'sollicitations/:id',
+          component: SollicitationDetailView,
         },
         {
           path: 'participations',

@@ -315,3 +315,39 @@ class DetailDemandeView(APIView):
         # 4. Sérialiser et renvoyer
         serializer = DemandeSerializer(demande)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+# ===================================================
+# Vue : détail d'une sollicitation
+# ===================================================
+
+@extend_schema(responses=SollicitationSerializer)
+class DetailSollicitationView(APIView):
+    """
+    GET /api/sollicitations/<id>/
+
+    Renvoie le détail d'une sollicitation précise.
+    Seul le donneur concerné peut y accéder.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        # 1. Récupérer la sollicitation
+        sollicitation = get_object_or_404(Sollicitation, pk=pk)
+
+        # 2. Vérifier que l'utilisateur est bien un donneur
+        if request.user.role != 'donneur':
+            return Response(
+                {"detail": "Seul un donneur peut consulter le détail d'une sollicitation."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 3. Vérifier que la sollicitation appartient bien à ce donneur
+        if sollicitation.donneur != request.user.profil_donneur:
+            return Response(
+                {"detail": "Cette sollicitation ne vous est pas adressée."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 4. Sérialiser et renvoyer
+        serializer = SollicitationSerializer(sollicitation)
+        return Response(serializer.data, status=status.HTTP_200_OK)

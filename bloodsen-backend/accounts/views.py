@@ -6,8 +6,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema
+import secrets
+from datetime import timedelta
+from django.utils import timezone
 
-from .models import Utilisateur, InscriptionEnAttente, ProfilDonneur, ProfilStructureSante
+
+from .models import Utilisateur, InscriptionEnAttente, ProfilDonneur, ProfilStructureSante, TokenReinitialisationMotDePasse
 from .serializers import (
     InscriptionDonneurSerializer,
     InscriptionStructureSerializer,
@@ -16,8 +20,12 @@ from .serializers import (
     ModifierProfilDonneurSerializer,
     ModifierProfilStructureSerializer,
     ChangerMotDePasseSerializer, 
+    MotDePasseOublieSerializer,         
+    ReinitialiserMotDePasseSerializer,
 )
-from .utils import envoyer_email_verification
+from .utils import envoyer_email_verification,  envoyer_email_reinitialisation
+
+
 
 
 # ============================================================
@@ -353,5 +361,103 @@ class ChangerMotDePasseView(APIView):
         # 3. Réponse de succès
         return Response(
             {"message": "Mot de passe mis à jour avec succès."},
+            status=status.HTTP_200_OK,
+        )
+
+
+# ============================================================
+# VUE 7 : Demande de réinitialisation de mot de passe
+# ===========================================================
+
+
+@extend_schema(
+    request=MotDePasseOublieSerializer,
+    responses=None,
+    description="Envoie un email de réinitialisation si l'email existe.",
+)
+class MotDePasseOublieView(APIView):
+    """
+    POST /api/auth/mot-de-passe-oublie/
+
+    Body attendu : { "email": "..." }
+
+    Si l'email correspond à un utilisateur existant, on envoie un email
+    avec un lien de réinitialisation.
+
+    IMPORTANT (sécurité) : on renvoie TOUJOURS le même message, que
+    l'email existe ou non. Cela empêche un attaquant de découvrir
+    quels emails sont enregistrés dans la base (énumération).
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # 1. Valider l'email
+        serializer = MotDePasseOublieSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+
+        # 2. Chercher l'utilisateur (sans révéler s'il existe ou non)
+        try:
+            utilisateur = Utilisateur.objects.get(email=email)
+        except Utilisateur.DoesNotExist:
+            # On renvoie le même message que si l'utilisateur existait
+            return Response(
+                {"message": "Si cet email est associé à un compte, un lien de réinitialisation a été envoyé."},
+                status=status.HTTP_200_OK,
+            )
+
+        # 3. Supprimer les anciens tokens non utilisés de cet utilisateur
+        TokenReinitialisationMotDePasse.objects.filter(
+            utilisateur=utilisateur,
+            utilise=False,
+        ).delete()
+
+        # 4. Créer un nouveau token (valide 1 heure)
+        token_obj = TokenReinitialisationMotDePasse.objects.create(
+            utilisateur=utilisateur,
+            token=secrets.token_urlsafe(48),
+            expire_a=timezone.now() + timedelta(hours=1),
+        )
+
+        # 5. Envoyer l'email
+        try:
+            envoyer_email_reinitialisation(utilisateur.email, token_obj.token)
+        except Exception as e:
+            print(f"Erreur lors de l'envoi de l'email de réinitialisation : {e}")
+
+        # 6. Réponse (identique dans tous les cas)
+        return Response(
+            {"message": "Si cet email est associé à un compte, un lien de réinitialisation a été envoyé."},
+            status=status.HTTP_200_OK,
+        )
+
+
+# ============================================================
+# VUE 8 : Réinitialisation du mot de passe
+# ============================================================
+
+@extend_schema(
+    request=ReinitialiserMotDePasseSerializer,
+    responses=None,
+    description="Réinitialise le mot de passe avec un token valide.",
+)
+class ReinitialiserMotDePasseView(APIView):
+    """
+    POST /api/auth/reinitialiser-mot-de-passe/
+
+    Body attendu : { "token": "...", "nouveau_mot_de_passe": "..." }
+
+    Valide le token et change le mot de passe de l'utilisateur associé.
+    Le token devient inutilisable après usage.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ReinitialiserMotDePasseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {"message": "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter."},
             status=status.HTTP_200_OK,
         )

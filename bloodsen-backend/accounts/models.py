@@ -6,6 +6,8 @@ from django.utils import timezone
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
 from .managers import UtilisateurManager
+from django.utils import timezone
+
 
 
 class Utilisateur(AbstractBaseUser, PermissionsMixin):
@@ -153,3 +155,43 @@ class InscriptionEnAttente(models.Model):
 
     def __str__(self):
         return f"Inscription en attente — {self.email}"
+
+# =====================================================
+# TOKEN DE RÉINITIALISATION DE MOT DE PASSE
+# =====================================================
+
+class TokenReinitialisationMotDePasse(models.Model):
+    """
+    Représente un token de réinitialisation de mot de passe.
+
+    Flux :
+      1. L'utilisateur demande une réinitialisation (email)
+      2. Le backend crée un token et envoie un email avec un lien
+      3. L'utilisateur clique sur le lien et saisit un nouveau mot de passe
+      4. Le backend valide le token, change le mot de passe, marque le token utilisé
+    """
+    utilisateur = models.ForeignKey(
+        Utilisateur,
+        on_delete=models.CASCADE,
+        related_name='tokens_reinitialisation',
+    )
+    token = models.CharField(max_length=64, unique=True)
+    date_creation = models.DateTimeField(auto_now_add=True)
+    expire_a = models.DateTimeField()
+    utilise = models.BooleanField(
+        default=False,
+        help_text="True si le token a déjà servi (à usage unique)",
+    )
+
+    class Meta:
+        ordering = ['-date_creation']
+
+    def est_valide(self):
+        """
+        Un token est valide s'il n'a pas été utilisé ET n'a pas expiré.
+        """
+        return (not self.utilise) and (timezone.now() < self.expire_a)
+
+    def __str__(self):
+        statut = 'utilisé' if self.utilise else 'actif'
+        return f"Token {statut} de {self.utilisateur.email}"

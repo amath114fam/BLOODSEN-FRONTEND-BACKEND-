@@ -41,3 +41,31 @@ def envoyer_email_verification(email, token):
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[email],
     )
+
+def envoyer_email_reinitialisation(email, token):
+    """
+    Envoie un email contenant le lien de réinitialisation de mot de passe.
+
+    Le lien pointe vers une page frontend qui demandera le nouveau mot de passe.
+    """
+    lien = f"{settings.FRONTEND_URL}/reinitialiser-mot-de-passe?token={token}"
+
+    sujet = "Réinitialisation de votre mot de passe - BloodSen"
+
+    message = (
+        "Bonjour,\n\n"
+        "Vous avez demandé la réinitialisation de votre mot de passe sur BloodSen.\n\n"
+        "Cliquez sur le lien ci-dessous pour définir un nouveau mot de passe :\n"
+        f"{lien}\n\n"
+        "Ce lien expire dans 1 heure.\n\n"
+        "Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email. "
+        "Votre mot de passe actuel reste inchangé.\n\n"
+        "L'équipe BloodSen"
+    )
+
+    send_mail(
+        subject=sujet,
+        message=message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[email],
+    )

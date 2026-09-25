@@ -7,7 +7,9 @@ from .views import (
     VerifierEmailView,
     EmailTokenObtainPairView,
     MoiView,
-    ChangerMotDePasseView
+    ChangerMotDePasseView,
+    MotDePasseOublieView,           
+    ReinitialiserMotDePasseView, 
 )
 
 urlpatterns = [
@@ -48,4 +50,6 @@ urlpatterns = [
     # --- Infos de l'utilisateur connecté ---
    path('moi/', MoiView.as_view(), name='moi'),
    path('changer-mot-de-passe/', ChangerMotDePasseView.as_view(), name='changer-mot-de-passe'),
+   path('mot-de-passe-oublie/', MotDePasseOublieView.as_view(), name='mot-de-passe-oublie'),
+   path('reinitialiser-mot-de-passe/', ReinitialiserMotDePasseView.as_view(), name='reinitialiser-mot-de-passe'),
 ]

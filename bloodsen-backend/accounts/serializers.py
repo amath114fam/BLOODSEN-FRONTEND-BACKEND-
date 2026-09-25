@@ -8,7 +8,7 @@ from .constants import (
     valider_nom_propre,
 )
 
-from .models import Utilisateur, InscriptionEnAttente, ProfilDonneur
+from .models import Utilisateur, InscriptionEnAttente, ProfilDonneur, TokenReinitialisationMotDePasse
 
 
 class InscriptionDonneurSerializer(serializers.Serializer):
@@ -399,3 +399,61 @@ class ChangerMotDePasseSerializer(serializers.Serializer):
         user.set_password(self.validated_data['nouveau_mot_de_passe'])
         user.save()
         return user
+
+# =====================================================
+# SERIALIZERS : mot de passe oublié
+# =====================================================
+
+class MotDePasseOublieSerializer(serializers.Serializer):
+    """
+    Valide l'email saisi pour la demande de réinitialisation.
+    On NE vérifie PAS si l'email existe (sécurité : éviter l'énumération).
+    """
+    email = serializers.EmailField()
+
+
+class ReinitialiserMotDePasseSerializer(serializers.Serializer):
+    """
+    Valide le token et le nouveau mot de passe.
+    """
+    token = serializers.CharField()
+    nouveau_mot_de_passe = serializers.CharField(write_only=True, max_length=128)
+
+    def validate_nouveau_mot_de_passe(self, value):
+        validate_password(value)
+        return value
+
+    def validate_token(self, value):
+        """
+        Vérifie que le token existe, n'a pas expiré et n'a pas été utilisé.
+        """
+        try:
+            token_obj = TokenReinitialisationMotDePasse.objects.get(token=value)
+        except TokenReinitialisationMotDePasse.DoesNotExist:
+            raise serializers.ValidationError(
+                "Ce lien de réinitialisation est invalide."
+            )
+
+        if not token_obj.est_valide():
+            raise serializers.ValidationError(
+                "Ce lien de réinitialisation a expiré ou a déjà été utilisé."
+            )
+
+        # On stocke l'objet token dans le serializer pour le réutiliser dans save()
+        self._token_obj = token_obj
+        return value
+
+    def save(self, **kwargs):
+        """
+        Change le mot de passe et marque le token comme utilisé.
+        """
+        token_obj = self._token_obj
+        utilisateur = token_obj.utilisateur
+
+        utilisateur.set_password(self.validated_data['nouveau_mot_de_passe'])
+        utilisateur.save()
+
+        token_obj.utilise = True
+        token_obj.save(update_fields=['utilise'])
+
+        return utilisateur

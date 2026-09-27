@@ -636,7 +636,7 @@ async function handleSubmit() {
 
   overflow: hidden;
 
-  background-image: url('@/assets/images/Connexion.png');
+  background-image: url('@/assets/images/inscription.jpg');
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;

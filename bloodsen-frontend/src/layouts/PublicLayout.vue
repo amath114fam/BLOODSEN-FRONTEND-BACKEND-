@@ -21,14 +21,34 @@
             </nav>
 
             <!-- Actions desktop -->
-            <div class="header-actions">
-            <router-link to="/connexion" class="login-link">
-                Connexion
-            </router-link>
 
-            <router-link to="/inscription" class="signup-button">
-                Créer un compte
-            </router-link>
+            <!-- Actions desktop -->
+            <div class="header-actions">
+
+              <!-- Si NON connecté -->
+              <template v-if="!estConnecte">
+                <router-link to="/connexion" class="login-link">
+                  Connexion
+                </router-link>
+
+                <router-link to="/inscription" class="signup-button">
+                  Créer un compte
+                </router-link>
+              </template>
+
+              <!-- Si connecté -->
+              <template v-else>
+                <router-link :to="lienTableauDeBord" class="dashboard-link">
+                  <LayoutDashboard :size="16" />
+                  Tableau de bord
+                </router-link>
+
+                <button type="button" class="logout-button" @click="handleLogout">
+                  <LogOut :size="16" />
+                  Déconnexion
+                </button>
+              </template>
+
             </div>
 
             <!-- Bouton hamburger mobile -->
@@ -62,21 +82,43 @@
             Contact
             </a>
 
-            <router-link
+            <!-- Si NON connecté -->
+        <template v-if="!estConnecte">
+          <router-link
             to="/connexion"
             class="mobile-login"
             @click="isMenuOpen = false"
-            >
+          >
             Connexion
-            </router-link>
+          </router-link>
 
-            <router-link
+          <router-link
             to="/inscription"
             class="mobile-signup"
             @click="isMenuOpen = false"
-            >
+          >
             Créer un compte
-            </router-link>
+          </router-link>
+        </template>
+
+        <!-- Si connecté -->
+        <template v-else>
+          <router-link
+            :to="lienTableauDeBord"
+            class="mobile-signup"
+            @click="isMenuOpen = false"
+          >
+            Tableau de bord
+          </router-link>
+
+          <button
+            type="button"
+            class="mobile-logout"
+            @click="handleLogout"
+          >
+            Déconnexion
+          </button>
+        </template>
 
         </div>
     </header>
@@ -276,14 +318,40 @@
   </div>
 
 </footer>
+
+ <ChatWidget />
+ 
   </div>
 </template>
 <script setup>
-import { ref } from 'vue'
-import { RouterView } from 'vue-router'
-import { X, Menu } from 'lucide-vue-next'
+import { ref, computed } from 'vue'
+import { RouterView, useRouter } from 'vue-router'
+import { X, Menu, LayoutDashboard, LogOut } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
+import ChatWidget from '@/components/ChatWidget.vue'
+
+const router = useRouter()
+const auth = useAuthStore()
 
 const isMenuOpen = ref(false)
+
+// Vrai si l'utilisateur est connecté
+const estConnecte = computed(() => auth.isAuthenticated)
+
+// Lien vers le bon tableau de bord selon le rôle
+const lienTableauDeBord = computed(() => {
+  if (auth.user.role === 'structure') return '/structure/tableau-de-bord'
+  if (auth.user.role === 'donneur') return '/donneur/tableau-de-bord'
+  return '/'
+})
+
+// Déconnexion
+function handleLogout() {
+  auth.logout()
+  isMenuOpen.value = false
+  router.push('/connexion')
+}
+
 </script>
 <style scoped>
 .public-layout {
@@ -353,6 +421,52 @@ main {
   font-weight: 600;
 }
 
+/* Lien vers le tableau de bord (quand connecté) */
+.dashboard-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 10px 18px;
+  border-radius: 8px;
+
+  background: var(--bloodsen-red);
+  color: #fff;
+
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dashboard-link:hover {
+  opacity: 0.9;
+}
+
+/* Bouton de déconnexion */
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 10px 16px;
+  border: 1px solid #e0e4ea;
+  border-radius: 8px;
+
+  background: transparent;
+  color: var(--bloodsen-dark);
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.logout-button:hover {
+  border-color: var(--bloodsen-red);
+  color: var(--bloodsen-red);
+}
 /* =========================
    BOUTON HAMBURGER
 ========================= */
@@ -656,6 +770,23 @@ main {
     background: var(--bloodsen-red);
     color: #fff !important;
     text-align: center;
+  }
+
+  .mobile-logout {
+    padding: 12px 16px;
+    border: 1px solid #e0e4ea;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--bloodsen-dark);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .mobile-logout:hover {
+    border-color: var(--bloodsen-red);
+    color: var(--bloodsen-red);
   }
 }
 </style>

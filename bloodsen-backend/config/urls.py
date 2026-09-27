@@ -10,9 +10,11 @@ urlpatterns = [
     path('api/', include('demandes.urls')),
     path('api/', include('participations.urls')), 
     path('api/', include('dashboard.urls')),
-    path('api/', include('rag.urls')), 
+    path('api/', include('rag.urls')),
+    path('api/', include('contact.urls')), 
 
     # Documentation Swagger
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+
 ]

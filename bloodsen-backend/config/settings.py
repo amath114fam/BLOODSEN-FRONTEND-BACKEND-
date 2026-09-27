@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'participations',   # participations des donneurs
     'dashboard',
     'rag', 
+    'contact',
 
 ]
 
@@ -250,6 +251,7 @@ RAG_MAX_CHUNKS = 5
 RAG_SIMILARITY_THRESHOLD = 0.5
 
 
+CONTACT_EMAIL = os.getenv('CONTACT_EMAIL', 'afam26641@gmail.com')
 # ======================================
 # FICHIERS MÉDIA (uploads utilisateur)
 # ======================================

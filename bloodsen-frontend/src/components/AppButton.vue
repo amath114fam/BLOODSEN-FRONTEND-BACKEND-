@@ -93,6 +93,16 @@ defineProps({
   background-color: #fdecea;
 }
 
+.app-button--outline-light {
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
+.app-button--outline-light:hover {
+  background-color: var(--bloodsen-red);
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
 .app-button--danger {
   background-color: transparent;
   color: #c62828;

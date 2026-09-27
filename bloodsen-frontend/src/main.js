@@ -10,6 +10,7 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from './stores/auth'
 
 // ============================================
 // DÉMARRAGE DE L'APPLICATION
@@ -17,14 +18,29 @@ import router from './router'
 // On crée l'application Vue, puis on lui greffe :
 //   1. Pinia  → pour gérer l'état global (stores)
 //   2. Router → pour gérer la navigation entre pages
-// ============================================
 
-const app = createApp(App)
 
-// On active Pinia AVANT le router (le router peut avoir besoin
-// d'accéder au store auth dans ses guards).
-app.use(createPinia())
+async function demarrerApplication() {
+  const app = createApp(App)
 
-app.use(router)
+  // On active Pinia AVANT le router (le router peut avoir besoin
+  // d'accéder au store auth dans ses guards).
+  app.use(createPinia())
 
-app.mount('#app')
+  // Rechargement du profil si un token existe
+  const auth = useAuthStore()
+
+  if (localStorage.getItem('access_token')) {
+    try {
+      await auth.fetchMe()
+    } catch (e) {
+      // Token invalide ou expiré → on nettoie
+      auth.logout()
+    }
+  }
+
+  app.use(router)
+  app.mount('#app')
+}
+
+demarrerApplication()

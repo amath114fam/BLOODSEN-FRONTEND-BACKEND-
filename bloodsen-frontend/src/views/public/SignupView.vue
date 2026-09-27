@@ -888,23 +888,27 @@ async function handleSubmitStructure() {
 .signup-visual {
   position: relative;
 
-  min-height: 100vh;
+  display: flex;
+  align-items: flex-end;       /* colle le contenu en bas */
+  justify-content: center;
 
-  background-image: url('@/assets/images/inscription.jpg');
+  width: 100%;
+  height: 100%;
+
+  overflow: hidden;
+
+  background-image: url('@/assets/images/header2.jpg');
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
-
-  overflow: hidden;
 }
 
 .visual-overlay {
   position: absolute;
   inset: 0;
 
-  background: url("src/assets/images/Inscription.png") 50% 50%;
+  background-color: rgba(11, 25, 43, 0.55);
 }
-
 .visual-content {
   position: absolute;
 

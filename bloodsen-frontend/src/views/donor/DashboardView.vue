@@ -6,10 +6,6 @@
         <h2>Bonjour {{ prenom }}</h2>
         <p>Merci de contribuer à sauver des vies.</p>
       </div>
-
-      <AppButton variant="primary" to="/donneur/sollicitations">
-        Voir mes sollicitations
-      </AppButton>
     </div>
 
     <!-- Indicateurs -->

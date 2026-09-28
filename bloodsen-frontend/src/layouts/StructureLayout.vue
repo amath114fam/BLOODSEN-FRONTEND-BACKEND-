@@ -30,15 +30,6 @@
         </div>
 
         <div class="structure-actions">
-
-          <button type="button" class="icon-button" aria-label="Notifications">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 8C18 5.79 16.21 4 14 4H10C7.79 4 6 5.79 6 8C6 12.5 4 14 4 16H20C20 14 18 12.5 18 8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M10 20H14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
-            <span v-if="hasNotifications" class="notification-dot"></span>
-          </button>
-
           <router-link to="/structure/profil" class="user-block">
             <span class="user-avatar">{{ userInitials }}</span>
 

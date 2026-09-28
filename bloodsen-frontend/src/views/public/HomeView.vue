@@ -860,7 +860,6 @@ onUnmounted(() => {
 
 .step:hover {
   transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(200, 16, 46, 0.1);
   border-color: var(--bloodsen-red);
 }
 
@@ -1049,7 +1048,6 @@ onUnmounted(() => {
 
 .join-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(200, 16, 46, 0.12);
 }
 
 .join-card:hover::before {

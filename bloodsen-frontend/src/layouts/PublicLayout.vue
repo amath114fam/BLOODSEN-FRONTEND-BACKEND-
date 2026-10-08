@@ -1,88 +1,99 @@
 <template>
   <div class="public-layout">
-    <header class="site-header">
-        <div class="container header-content">
 
-            <!-- Logo -->
-            <router-link to="/" class="logo-link">
-            <img
-                src="@/assets/images/logo.png"
-                alt="BloodSen"
-                class="logo"
-            />
+    <!-- ==========================================
+         BANDEAU D'URGENCE (au-dessus de la navbar)
+    =========================================== -->
+    <router-link to="/demande-urgente" class="urgent-banner">
+      <div class="container urgent-banner-content">
+        <span class="urgent-dot"></span>
+        <span class="urgent-banner-text">
+          Un proche a besoin de sang en urgence ?
+          <strong>Faites une demande maintenant →</strong>
+        </span>
+      </div>
+    </router-link>
+
+    <header class="site-header">
+      <div class="container header-content">
+
+        <!-- Logo -->
+        <router-link to="/" class="logo-link">
+          <img
+            src="@/assets/images/logo.png"
+            alt="BloodSen"
+            class="logo"
+          />
+        </router-link>
+
+        <!-- Navigation desktop -->
+        <nav class="main-nav">
+          <router-link to="/">Accueil</router-link>
+          <a href="#comment-ca-marche">Comment ça marche</a>
+          <a href="#pourquoi-donner">Pourquoi donner</a>
+          <a href="#contact">Contact</a>
+        </nav>
+
+        <!-- Actions desktop -->
+        <div class="header-actions">
+
+          <!-- Si NON connecté -->
+          <template v-if="!estConnecte">
+            <router-link to="/connexion" class="login-link">
+              Connexion
             </router-link>
 
-            <!-- Navigation desktop -->
-            <nav class="main-nav">
-            <router-link to="/">Accueil</router-link>
-            <a href="#comment-ca-marche">Comment ça marche</a>
-            <a href="#pourquoi-donner">Pourquoi donner</a>
-            <a href="#contact">Contact</a>
-            </nav>
+            <router-link to="/inscription" class="signup-button">
+              Créer un compte
+            </router-link>
+          </template>
 
-            <!-- Actions desktop -->
+          <!-- Si connecté -->
+          <template v-else>
+            <router-link :to="lienTableauDeBord" class="dashboard-link">
+              <LayoutDashboard :size="16" />
+              Tableau de bord
+            </router-link>
 
-            <!-- Actions desktop -->
-            <div class="header-actions">
-
-              <!-- Si NON connecté -->
-              <template v-if="!estConnecte">
-                <router-link to="/connexion" class="login-link">
-                  Connexion
-                </router-link>
-
-                <router-link to="/inscription" class="signup-button">
-                  Créer un compte
-                </router-link>
-              </template>
-
-              <!-- Si connecté -->
-              <template v-else>
-                <router-link :to="lienTableauDeBord" class="dashboard-link">
-                  <LayoutDashboard :size="16" />
-                  Tableau de bord
-                </router-link>
-
-                <button type="button" class="logout-button" @click="handleLogout">
-                  <LogOut :size="16" />
-                  Déconnexion
-                </button>
-              </template>
-
-            </div>
-
-            <!-- Bouton hamburger mobile -->
-            <button
-            class="menu-button"
-            @click="isMenuOpen = !isMenuOpen"
-            :aria-label="isMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'"
-            >
-            <X v-if="isMenuOpen" :size="24" :stroke-width="2" />
-            <Menu v-else :size="24" :stroke-width="2" />
+            <button type="button" class="logout-button" @click="handleLogout">
+              <LogOut :size="16" />
+              Déconnexion
             </button>
+          </template>
 
         </div>
 
-        <!-- Menu mobile -->
-        <div v-if="isMenuOpen" class="mobile-menu">
+        <!-- Bouton hamburger mobile -->
+        <button
+          class="menu-button"
+          @click="isMenuOpen = !isMenuOpen"
+          :aria-label="isMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'"
+        >
+          <X v-if="isMenuOpen" :size="24" :stroke-width="2" />
+          <Menu v-else :size="24" :stroke-width="2" />
+        </button>
 
-            <router-link to="/" @click="isMenuOpen = false">
-            Accueil
-            </router-link>
+      </div>
 
-            <a href="#comment-ca-marche" @click="isMenuOpen = false">
-            Comment ça marche
-            </a>
+      <!-- Menu mobile -->
+      <div v-if="isMenuOpen" class="mobile-menu">
 
-            <a href="#pourquoi-donner" @click="isMenuOpen = false">
-            Pourquoi donner
-            </a>
+        <router-link to="/" @click="isMenuOpen = false">
+          Accueil
+        </router-link>
 
-            <a href="#contact" @click="isMenuOpen = false">
-            Contact
-            </a>
+        <a href="#comment-ca-marche" @click="isMenuOpen = false">
+          Comment ça marche
+        </a>
 
-            <!-- Si NON connecté -->
+        <a href="#pourquoi-donner" @click="isMenuOpen = false">
+          Pourquoi donner
+        </a>
+
+        <a href="#contact" @click="isMenuOpen = false">
+          Contact
+        </a>
+
         <template v-if="!estConnecte">
           <router-link
             to="/connexion"
@@ -101,7 +112,6 @@
           </router-link>
         </template>
 
-        <!-- Si connecté -->
         <template v-else>
           <router-link
             :to="lienTableauDeBord"
@@ -120,209 +130,107 @@
           </button>
         </template>
 
-        </div>
+      </div>
     </header>
 
     <main>
-        <RouterView />
+      <RouterView />
     </main>
 
     <footer class="site-footer">
 
-  <div class="container footer-main">
+      <div class="container footer-main">
 
-    <!-- Colonne 1 : Présentation -->
-    <div class="footer-brand">
+        <!-- Colonne 1 : Présentation -->
+        <div class="footer-brand">
 
-      <div class="footer-logo">
-        <img
-          src="@/assets/images/logo.png"
-          alt="BloodSen"
-        />
-      </div>
+          <div class="footer-logo">
+            <img src="@/assets/images/logo.png" alt="BloodSen" />
+          </div>
 
-      <p>
-        Plateforme nationale de coordination et de sensibilisation
-        au don de sang au Sénégal. Relier les donneurs volontaires
-        aux structures hospitalières de Dakar et des régions.
-      </p>
+          <p>
+            Plateforme nationale de coordination et de sensibilisation
+            au don de sang au Sénégal. Relier les donneurs volontaires
+            aux structures hospitalières de Dakar et des régions.
+          </p>
 
-    </div>
+        </div>
 
+        <!-- Colonne 2 : Plateforme -->
+        <div class="footer-column">
+          <h3>Plateforme</h3>
+          <nav>
+            <a href="#accueil">Accueil</a>
+            <a href="#comment-ca-marche">Comment ça marche</a>
+            <a href="#pourquoi-donner">Pourquoi donner</a>
+            <a href="#centres-collecte">Centres de collecte</a>
+          </nav>
+        </div>
 
-    <!-- Colonne 2 : Plateforme -->
-    <div class="footer-column">
+        <!-- Colonne 3 : Informations -->
+        <div class="footer-column">
+          <h3>Informations & Aide</h3>
+          <nav>
+            <a href="#eligibilite">Critères d'éligibilité</a>
+            <a href="#urgences">Urgences transfusionnelles</a>
+            <a href="#contact">Nous contacter</a>
+            <a href="#mentions-legales">Mentions légales</a>
+          </nav>
+        </div>
 
-      <h3>Plateforme</h3>
+        <!-- Colonne 4 : Contact -->
+        <div class="footer-column footer-contact">
+          <h3>Contact Dakar</h3>
 
-      <nav>
-        <a href="#accueil">Accueil</a>
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 10C20 15 12 21 12 21C12 21 4 15 4 10C4 5.58 7.58 2 12 2C16.42 2 20 5.58 20 10Z" stroke="currentColor" stroke-width="2" />
+              <circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2" />
+            </svg>
+            <span>
+              Centre National de Transfusion Sanguine (CNTS),
+              Fann Résidence, Dakar, Sénégal
+            </span>
+          </div>
 
-        <a href="#comment-ca-marche">
-          Comment ça marche
-        </a>
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 4H9L11 9L8.5 10.5C9.57 12.67 11.33 14.43 13.5 15.5L15 13L20 15V19C20 20.1 19.1 21 18 21C10.27 21 4 14.73 4 7C4 5.9 4.9 5 6 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>+221 33 821 54 20</span>
+          </div>
 
-        <a href="#pourquoi-donner">
-          Pourquoi donner
-        </a>
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2" />
+              <path d="M3 7L12 13L21 7" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+            </svg>
+            <span>contact@bloodsen.sn</span>
+          </div>
 
-        <a href="#centres-collecte">
-          Centres de collecte
-        </a>
-      </nav>
-
-    </div>
-
-
-    <!-- Colonne 3 : Informations -->
-    <div class="footer-column">
-
-      <h3>Informations & Aide</h3>
-
-      <nav>
-        <a href="#eligibilite">
-          Critères d'éligibilité
-        </a>
-
-        <a href="#urgences">
-          Urgences transfusionnelles
-        </a>
-
-        <a href="#contact">
-          Nous contacter
-        </a>
-
-        <a href="#mentions-legales">
-          Mentions légales
-        </a>
-      </nav>
-
-    </div>
-
-
-    <!-- Colonne 4 : Contact -->
-    <div class="footer-column footer-contact">
-
-      <h3>Contact Dakar</h3>
-
-      <div class="footer-contact-item">
-
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M20 10C20 15 12 21 12 21C12 21 4 15 4 10C4 5.58 7.58 2 12 2C16.42 2 20 5.58 20 10Z"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-
-          <circle
-            cx="12"
-            cy="10"
-            r="2.5"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-        </svg>
-
-        <span>
-          Centre National de Transfusion Sanguine (CNTS),
-          Fann Résidence, Dakar, Sénégal
-        </span>
+        </div>
 
       </div>
 
-
-      <div class="footer-contact-item">
-
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M5 4H9L11 9L8.5 10.5C9.57 12.67 11.33 14.43 13.5 15.5L15 13L20 15V19C20 20.1 19.1 21 18 21C10.27 21 4 14.73 4 7C4 5.9 4.9 5 6 5"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-
-        <span>
-          +221 33 821 54 20
-        </span>
-
+      <!-- Ligne inférieure -->
+      <div class="container footer-bottom">
+        <p>
+          © 2025 BloodSen Sénégal. Initiative civile et médicale d'intérêt public.
+        </p>
+        <nav>
+          <a href="#mentions-legales">Mentions légales</a>
+          <a href="#confidentialite">Politique de confidentialité</a>
+          <a href="#accessibilite">Accessibilité</a>
+        </nav>
       </div>
 
+    </footer>
 
-      <div class="footer-contact-item">
+    <ChatWidget />
 
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <rect
-            x="3"
-            y="5"
-            width="18"
-            height="14"
-            rx="2"
-            stroke="currentColor"
-            stroke-width="2"
-          />
-
-          <path
-            d="M3 7L12 13L21 7"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linejoin="round"
-          />
-        </svg>
-
-        <span>
-          contact@bloodsen.sn
-        </span>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- Ligne inférieure -->
-  <div class="container footer-bottom">
-
-    <p>
-      © 2025 BloodSen Sénégal. Initiative civile et médicale d'intérêt public.
-    </p>
-
-    <nav>
-      <a href="#mentions-legales">
-        Mentions légales
-      </a>
-
-      <a href="#confidentialite">
-        Politique de confidentialité
-      </a>
-
-      <a href="#accessibilite">
-        Accessibilité
-      </a>
-    </nav>
-
-  </div>
-
-</footer>
-
- <ChatWidget />
- 
   </div>
 </template>
+
 <script setup>
 import { ref, computed } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
@@ -339,9 +247,10 @@ const isMenuOpen = ref(false)
 const estConnecte = computed(() => auth.isAuthenticated)
 
 // Lien vers le bon tableau de bord selon le rôle
+// On utilise ?. pour éviter un crash si user est null
 const lienTableauDeBord = computed(() => {
-  if (auth.user.role === 'structure') return '/structure/tableau-de-bord'
-  if (auth.user.role === 'donneur') return '/donneur/tableau-de-bord'
+  if (auth.user?.role === 'structure') return '/structure/tableau-de-bord'
+  if (auth.user?.role === 'donneur') return '/donneur/tableau-de-bord'
   return '/'
 })
 
@@ -351,8 +260,8 @@ function handleLogout() {
   isMenuOpen.value = false
   router.push('/connexion')
 }
-
 </script>
+
 <style scoped>
 .public-layout {
   min-height: 100vh;
@@ -363,6 +272,80 @@ function handleLogout() {
 main {
   flex: 1;
 }
+
+/* ========================================
+   BANDEAU D'URGENCE
+======================================== */
+
+.urgent-banner {
+  display: block;
+
+  background: linear-gradient(90deg, #8b0000 0%, #c8102e 50%, #8b0000 100%);
+  color: #ffffff;
+
+  text-decoration: none;
+
+  transition: opacity 0.2s ease;
+}
+
+.urgent-banner:hover {
+  opacity: 0.92;
+}
+
+.urgent-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+
+  min-height: 42px;
+  padding: 8px 0;
+}
+
+.urgent-banner-text {
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.urgent-banner-text strong {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Point pulsant */
+.urgent-dot {
+  position: relative;
+  flex-shrink: 0;
+
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+  background-color: #ffffff;
+}
+
+.urgent-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+
+  border-radius: 50%;
+  background-color: #ffffff;
+
+  animation: urgent-pulse 1.8s ease-out infinite;
+}
+
+@keyframes urgent-pulse {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ========================================
+   HEADER
+======================================== */
 
 .site-header {
   background: #fff;
@@ -467,6 +450,7 @@ main {
   border-color: var(--bloodsen-red);
   color: var(--bloodsen-red);
 }
+
 /* =========================
    BOUTON HAMBURGER
 ========================= */
@@ -495,11 +479,6 @@ main {
   color: #5f6672;
 }
 
-
-/* ========================================
-   CONTENU PRINCIPAL
-======================================== */
-
 .footer-main {
   display: grid;
   grid-template-columns: 1.35fr 1fr 1.1fr 1.15fr;
@@ -507,11 +486,6 @@ main {
 
   padding-bottom: 100px;
 }
-
-
-/* ========================================
-   LOGO + DESCRIPTION
-======================================== */
 
 .footer-brand {
   max-width: 270px;
@@ -529,20 +503,13 @@ main {
 
 .footer-brand p {
   margin: 0;
-
   color: #6a5960;
   font-size: 14px;
   line-height: 1.5;
 }
 
-
-/* ========================================
-   COLONNES
-======================================== */
-
 .footer-column h3 {
   margin: 0 0 14px;
-
   color: #202428;
   font-size: 14px;
   font-weight: 700;
@@ -559,18 +526,12 @@ main {
   font-size: 14px;
   line-height: 1.4;
   text-decoration: none;
-
   transition: color 0.2s ease;
 }
 
 .footer-column a:hover {
   color: var(--bloodsen-red);
 }
-
-
-/* ========================================
-   CONTACT
-======================================== */
 
 .footer-contact {
   max-width: 280px;
@@ -580,7 +541,6 @@ main {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-
   margin-bottom: 12px;
 }
 
@@ -590,12 +550,9 @@ main {
 
 .footer-contact-item svg {
   flex-shrink: 0;
-
   width: 18px;
   height: 18px;
-
   margin-top: 1px;
-
   color: #5c687b;
 }
 
@@ -605,24 +562,16 @@ main {
   line-height: 1.4;
 }
 
-
-/* ========================================
-   BAS DU FOOTER
-======================================== */
-
 .footer-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   min-height: 58px;
-
   border-top: 1px solid #d9dde2;
 }
 
 .footer-bottom p {
   margin: 0;
-
   color: #697386;
   font-size: 12px;
 }
@@ -637,7 +586,6 @@ main {
   color: #697386;
   font-size: 12px;
   text-decoration: none;
-
   transition: color 0.2s ease;
 }
 
@@ -645,13 +593,11 @@ main {
   color: var(--bloodsen-red);
 }
 
-
 /* ========================================
    RESPONSIVE
 ======================================== */
 
 @media (max-width: 992px) {
-
   .footer-main {
     grid-template-columns: repeat(2, 1fr);
     gap: 40px;
@@ -661,12 +607,9 @@ main {
   .footer-brand {
     max-width: 320px;
   }
-
 }
 
-
 @media (max-width: 768px) {
-
   .site-footer {
     padding-top: 40px;
   }
@@ -680,9 +623,7 @@ main {
     flex-direction: column;
     align-items: flex-start;
     justify-content: center;
-
     gap: 12px;
-
     padding: 18px 0;
   }
 
@@ -691,34 +632,17 @@ main {
     gap: 12px 20px;
   }
 
-}
-
-
-@media (max-width: 576px) {
-
-  .footer-main {
-    grid-template-columns: 1fr;
-    gap: 32px;
-    padding-bottom: 40px;
+  /* Bandeau d'urgence en mobile */
+  .urgent-banner-content {
+    justify-content: flex-start;
+    padding: 10px 16px;
   }
 
-  .footer-brand,
-  .footer-contact {
-    max-width: none;
+  .urgent-banner-text {
+    font-size: 12.5px;
   }
 
-  .footer-logo {
-    margin-bottom: 20px;
-  }
-
-}
-
-/* =========================
-   TABLETTE / MOBILE
-========================= */
-
-@media (max-width: 768px) {
-
+  /* Header en mobile */
   .header-content {
     min-height: 64px;
     gap: 16px;
@@ -728,18 +652,15 @@ main {
     width: 110px;
   }
 
-  /* Cacher la navigation desktop */
   .main-nav,
   .header-actions {
     display: none;
   }
 
-  /* Afficher le hamburger */
   .menu-button {
     display: block;
   }
 
-  /* Afficher le menu uniquement lorsqu'il est ouvert */
   .mobile-menu {
     display: flex;
     flex-direction: column;
@@ -787,6 +708,23 @@ main {
   .mobile-logout:hover {
     border-color: var(--bloodsen-red);
     color: var(--bloodsen-red);
+  }
+}
+
+@media (max-width: 576px) {
+  .footer-main {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding-bottom: 40px;
+  }
+
+  .footer-brand,
+  .footer-contact {
+    max-width: none;
+  }
+
+  .footer-logo {
+    margin-bottom: 20px;
   }
 }
 </style>

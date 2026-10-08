@@ -8,139 +8,110 @@ from .constants import (
     valider_nom_propre,
 )
 
-from .models import Utilisateur, InscriptionEnAttente, ProfilDonneur, TokenReinitialisationMotDePasse
+from .models import Utilisateur, InscriptionEnAttente, ProfilDonneur, TokenReinitialisationMotDePasse, Ville
 
 
 class InscriptionDonneurSerializer(serializers.Serializer):
-    """
-    Valide les données d'inscription d'un donneur.
-
-    Ce serializer ne crée PAS d'Utilisateur : il crée une
-    InscriptionEnAttente (voir la méthode create() en bas).
-    """
-
-    # Les champs attendus depuis le formulaire Vue
     email = serializers.EmailField()
     mot_de_passe = serializers.CharField(write_only=True, max_length=128)
     nom = serializers.CharField(max_length=100)
     prenom = serializers.CharField(max_length=100)
     telephone = serializers.CharField(max_length=20)
     groupe_sanguin = serializers.ChoiceField(choices=ProfilDonneur.GROUPES_SANGUINS)
-    region = serializers.ChoiceField(choices=REGIONS_CHOICES)
-    ville = serializers.CharField(max_length=100)
-    quartier = serializers.CharField(max_length=100)
+
+    # Ville : on reçoit l'ID, on stocke l'objet
+    ville_id = serializers.PrimaryKeyRelatedField(
+        queryset=Ville.objects.all(),
+        source='ville',
+    )
+
+    # Coordonnées GPS (optionnelles)
+    latitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-90,
+        max_value=90,
+    )
+    longitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-180,
+        max_value=180,
+    )
 
     def validate_email(self, value):
-        """
-        Vérifie que l'email n'est pas déjà utilisé.
-        """
         if Utilisateur.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "Cet email est déjà associé à un compte."
-            )
-
+            raise serializers.ValidationError("Cet email est déjà associé à un compte.")
         if InscriptionEnAttente.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "Une inscription est déjà en attente de vérification pour cet email."
-            )
-
+            raise serializers.ValidationError("Une inscription est déjà en attente pour cet email.")
         return value
 
     def validate_mot_de_passe(self, value):
-        """
-        Applique les règles de sécurité de Django.
-        """
         validate_password(value)
         return value
 
     def validate_nom(self, value):
-        """
-        Valide le nom (lettres, longueur minimale).
-        """
         try:
             return valider_nom_propre(value, 'le nom', min_length=2)
         except ValueError as e:
             raise serializers.ValidationError(str(e))
 
     def validate_prenom(self, value):
-        """
-        Valide le prénom (lettres, longueur minimale).
-        """
         try:
             return valider_nom_propre(value, 'le prénom', min_length=2)
         except ValueError as e:
             raise serializers.ValidationError(str(e))
 
     def validate_telephone(self, value):
-        """
-        Normalise et valide le téléphone sénégalais.
-        """
         try:
             return normaliser_telephone(value)
         except ValueError as e:
             raise serializers.ValidationError(str(e))
 
-    def validate_ville(self, value):
-        """
-        Valide la ville (longueur minimale).
-        """
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError(
-                "La ville doit contenir au moins 2 caractères."
-            )
-        return value.strip()
-
-    def validate_quartier(self, value):
-        """
-        Valide le quartier (longueur minimale).
-        """
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError(
-                "Le quartier doit contenir au moins 2 caractères."
-            )
-        return value.strip()
-
     def create(self, validated_data):
-        """
-        Crée une InscriptionEnAttente (PAS un Utilisateur).
-        """
         mot_de_passe = validated_data.pop('mot_de_passe')
         email = validated_data.pop('email')
 
-        donnees_profil = validated_data
+        # On convertit la ville (objet) en ID pour le stockage JSON
+        ville = validated_data.pop('ville')
+        validated_data['ville_id'] = ville.id
 
         return InscriptionEnAttente.objects.create(
             email=email,
             mot_de_passe_hash=make_password(mot_de_passe),
             role=Utilisateur.Role.DONNEUR,
-            donnees_profil=donnees_profil,
+            donnees_profil=validated_data,
         )
 
 class InscriptionStructureSerializer(serializers.Serializer):
-    """
-    Même logique que pour le donneur, avec les champs propres
-    à une structure de santé.
-    """
-
     email = serializers.EmailField()
     mot_de_passe = serializers.CharField(write_only=True, max_length=128)
     nom_structure = serializers.CharField(max_length=200)
     adresse = serializers.CharField(max_length=255)
-    region = serializers.ChoiceField(choices=REGIONS_CHOICES)
-    ville = serializers.CharField(max_length=100)
-    quartier = serializers.CharField(max_length=100)
+
+    ville_id = serializers.PrimaryKeyRelatedField(
+        queryset=Ville.objects.all(),
+        source='ville',
+    )
+
+    latitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-90,
+        max_value=90,
+    )
+    longitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-180,
+        max_value=180,
+    )
 
     def validate_email(self, value):
         if Utilisateur.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "Cet email est déjà associé à un compte."
-            )
-
+            raise serializers.ValidationError("Cet email est déjà associé à un compte.")
         if InscriptionEnAttente.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "Une inscription est déjà en attente de vérification pour cet email."
-            )
-
+            raise serializers.ValidationError("Une inscription est déjà en attente pour cet email.")
         return value
 
     def validate_mot_de_passe(self, value):
@@ -148,50 +119,29 @@ class InscriptionStructureSerializer(serializers.Serializer):
         return value
 
     def validate_nom_structure(self, value):
-        """
-        Valide le nom de la structure (lettres, longueur minimale 3).
-        """
         try:
             return valider_nom_propre(value, 'le nom de la structure', min_length=3, max_length=200)
         except ValueError as e:
             raise serializers.ValidationError(str(e))
 
     def validate_adresse(self, value):
-        """
-        Valide l'adresse (longueur minimale 5).
-        """
         if len(value.strip()) < 5:
-            raise serializers.ValidationError(
-                "L'adresse doit contenir au moins 5 caractères."
-            )
-        return value.strip()
-
-    def validate_ville(self, value):
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError(
-                "La ville doit contenir au moins 2 caractères."
-            )
-        return value.strip()
-
-    def validate_quartier(self, value):
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError(
-                "Le quartier doit contenir au moins 2 caractères."
-            )
+            raise serializers.ValidationError("L'adresse doit contenir au moins 5 caractères.")
         return value.strip()
 
     def create(self, validated_data):
         mot_de_passe = validated_data.pop('mot_de_passe')
         email = validated_data.pop('email')
-        donnees_profil = validated_data
+
+        ville = validated_data.pop('ville')
+        validated_data['ville_id'] = ville.id
 
         return InscriptionEnAttente.objects.create(
             email=email,
             mot_de_passe_hash=make_password(mot_de_passe),
             role=Utilisateur.Role.STRUCTURE,
-            donnees_profil=donnees_profil,
+            donnees_profil=validated_data,
         )
-
 
 class VerificationTokenSerializer(serializers.Serializer):
     """
@@ -229,22 +179,29 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
 # =====================================================
 
 class ModifierProfilDonneurSerializer(serializers.Serializer):
-    """
-    Valide les données de modification du profil d'un donneur.
-    Seuls certains champs sont modifiables :
-      - nom, prenom
-      - telephone
-      - region, ville, quartier
-      - disponible
-
-    Le groupe sanguin et l'email ne sont PAS modifiables.
-    """
     nom = serializers.CharField(max_length=100, required=False)
     prenom = serializers.CharField(max_length=100, required=False)
     telephone = serializers.CharField(max_length=20, required=False)
-    region = serializers.ChoiceField(choices=REGIONS_CHOICES, required=False)
-    ville = serializers.CharField(max_length=100, required=False)
-    quartier = serializers.CharField(max_length=100, required=False)
+
+    # Ville : optionnelle à la modification
+    ville_id = serializers.PrimaryKeyRelatedField(
+        queryset=Ville.objects.all(),
+        source='ville',
+        required=False,
+    )
+
+    latitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-90,
+        max_value=90,
+    )
+    longitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-180,
+        max_value=180,
+    )
     disponible = serializers.BooleanField(required=False)
 
     def validate_nom(self, value):
@@ -265,79 +222,47 @@ class ModifierProfilDonneurSerializer(serializers.Serializer):
         except ValueError as e:
             raise serializers.ValidationError(str(e))
 
-    def validate_ville(self, value):
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError(
-                "La ville doit contenir au moins 2 caractères."
-            )
-        return value.strip()
-
-    def validate_quartier(self, value):
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError(
-                "Le quartier doit contenir au moins 2 caractères."
-            )
-        return value.strip()
-
     def update(self, instance, validated_data):
-        """
-        Met à jour le ProfilDonneur avec les données validées.
-        Seuls les champs fournis sont modifiés.
-        """
         for champ, valeur in validated_data.items():
             setattr(instance, champ, valeur)
         instance.save()
         return instance
-
-
 # =====================================================
 # SERIALIZER : modification du profil structure
 # =====================================================
 
 class ModifierProfilStructureSerializer(serializers.Serializer):
-    """
-    Valide les données de modification du profil d'une structure.
-    Champs modifiables :
-      - nom_structure
-      - adresse
-      - region, ville, quartier
-
-    L'email ne est PAS modifiable.
-    """
     nom_structure = serializers.CharField(max_length=200, required=False)
     adresse = serializers.CharField(max_length=255, required=False)
-    region = serializers.ChoiceField(choices=REGIONS_CHOICES, required=False)
-    ville = serializers.CharField(max_length=100, required=False)
-    quartier = serializers.CharField(max_length=100, required=False)
+
+    ville_id = serializers.PrimaryKeyRelatedField(
+        queryset=Ville.objects.all(),
+        source='ville',
+        required=False,
+    )
+
+    latitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-90,
+        max_value=90,
+    )
+    longitude = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=-180,
+        max_value=180,
+    )
 
     def validate_nom_structure(self, value):
         try:
-            return valider_nom_propre(
-                value, 'le nom de la structure',
-                min_length=3, max_length=200,
-            )
+            return valider_nom_propre(value, 'le nom de la structure', min_length=3, max_length=200)
         except ValueError as e:
             raise serializers.ValidationError(str(e))
 
     def validate_adresse(self, value):
         if len(value.strip()) < 5:
-            raise serializers.ValidationError(
-                "L'adresse doit contenir au moins 5 caractères."
-            )
-        return value.strip()
-
-    def validate_ville(self, value):
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError(
-                "La ville doit contenir au moins 2 caractères."
-            )
-        return value.strip()
-
-    def validate_quartier(self, value):
-        if len(value.strip()) < 2:
-            raise serializers.ValidationError(
-                "Le quartier doit contenir au moins 2 caractères."
-            )
+            raise serializers.ValidationError("L'adresse doit contenir au moins 5 caractères.")
         return value.strip()
 
     def update(self, instance, validated_data):
@@ -345,7 +270,6 @@ class ModifierProfilStructureSerializer(serializers.Serializer):
             setattr(instance, champ, valeur)
         instance.save()
         return instance
-
 
 # =====================================================
 # SERIALIZER : changement de mot de passe

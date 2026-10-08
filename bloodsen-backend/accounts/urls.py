@@ -9,7 +9,8 @@ from .views import (
     MoiView,
     ChangerMotDePasseView,
     MotDePasseOublieView,           
-    ReinitialiserMotDePasseView, 
+    ReinitialiserMotDePasseView,
+    RegionsVillesView,
 )
 
 urlpatterns = [
@@ -52,4 +53,5 @@ urlpatterns = [
    path('changer-mot-de-passe/', ChangerMotDePasseView.as_view(), name='changer-mot-de-passe'),
    path('mot-de-passe-oublie/', MotDePasseOublieView.as_view(), name='mot-de-passe-oublie'),
    path('reinitialiser-mot-de-passe/', ReinitialiserMotDePasseView.as_view(), name='reinitialiser-mot-de-passe'),
+   path('regions/', RegionsVillesView.as_view(), name='regions-villes'),
 ]

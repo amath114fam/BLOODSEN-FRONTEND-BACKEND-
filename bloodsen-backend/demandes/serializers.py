@@ -5,6 +5,8 @@ from participations.models import Participation
 
 from django.utils import timezone
 from datetime import timedelta
+from accounts.models import Ville
+import secrets
 
 class DemandeCreateSerializer(serializers.ModelSerializer):
     """
@@ -196,3 +198,83 @@ class DonneurStructureSerializer(serializers.Serializer):
     nombre_sollicitations = serializers.IntegerField()
     nombre_participations = serializers.IntegerField()
     derniere_interaction = serializers.DateTimeField()
+
+
+# =====================================================
+# SERIALIZER : demande urgente sans compte (PUBLIC)
+# =====================================================
+
+class DemandeUrgentePublicSerializer(serializers.Serializer):
+    """
+    Valide la création d'une demande urgente par une personne
+    sans compte (type_createur = PUBLIC).
+    """
+    # Groupe sanguin recherché
+    groupe_sanguin = serializers.ChoiceField(choices=Demande.GroupeSanguin.choices)
+
+    # Nombre de poches
+    quantite = serializers.IntegerField(min_value=1)
+
+    # Niveau d'urgence
+    urgence = serializers.ChoiceField(choices=Demande.Urgence.choices)
+
+    # Ville de l'urgence (ID)
+    ville_id = serializers.PrimaryKeyRelatedField(
+        queryset=Ville.objects.all(),
+        source='ville',
+    )
+
+    # Coordonnées GPS de l'urgence (optionnelles)
+    latitude_urgence = serializers.FloatField(
+        required=False, allow_null=True, min_value=-90, max_value=90,
+    )
+    longitude_urgence = serializers.FloatField(
+        required=False, allow_null=True, min_value=-180, max_value=180,
+    )
+
+    # Message pour les donneurs
+    message = serializers.CharField(
+        required=False, allow_blank=True, max_length=1000,
+    )
+
+    # Infos sur le demandeur (sans compte)
+    nom_demandeur = serializers.CharField(max_length=200)
+    telephone_demandeur = serializers.CharField(max_length=20)
+    email_demandeur = serializers.EmailField()
+
+    # Infos sur le patient
+    nom_patient = serializers.CharField(max_length=200)
+    lieu_prise_en_charge = serializers.CharField(max_length=255)
+
+    def validate_telephone_demandeur(self, value):
+        from accounts.constants import normaliser_telephone
+        try:
+            return normaliser_telephone(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+    def create(self, validated_data):
+        # On génère un token de suivi unique
+        token = secrets.token_urlsafe(48)
+
+        # Date limite : 24h par défaut (urgence)
+        date_limite = timezone.now() + timedelta(hours=24)
+
+        return Demande.objects.create(
+            type_createur=Demande.TypeCreateur.PUBLIC,
+            ville=validated_data['ville'],
+            groupe_sanguin=validated_data['groupe_sanguin'],
+            quantite=validated_data['quantite'],
+            urgence=validated_data['urgence'],
+            message=validated_data.get('message', ''),
+            statut=Demande.StatutDemande.EN_VERIFICATION,
+            date_limite=date_limite,
+            nom_demandeur=validated_data['nom_demandeur'],
+            telephone_demandeur=validated_data['telephone_demandeur'],
+            email_demandeur=validated_data['email_demandeur'],
+            nom_patient=validated_data['nom_patient'],
+            lieu_prise_en_charge=validated_data['lieu_prise_en_charge'],
+            token_suivi=token,
+            latitude_urgence=validated_data.get('latitude_urgence'),
+            longitude_urgence=validated_data.get('longitude_urgence'),
+        )

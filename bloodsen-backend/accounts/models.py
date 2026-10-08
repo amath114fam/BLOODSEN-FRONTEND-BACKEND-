@@ -75,9 +75,15 @@ class ProfilDonneur(models.Model):
     prenom = models.CharField(max_length=100)
     telephone = models.CharField(max_length=20)
     groupe_sanguin = models.CharField(max_length=3, choices=GROUPES_SANGUINS)
-    region = models.CharField(max_length=100)
-    ville = models.CharField(max_length=100)
-    quartier = models.CharField(max_length=100)
+    ville = models.ForeignKey(
+        'Ville',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+    date_dernier_don = models.DateTimeField(null=True, blank=True)
 
     # Indique si le donneur peut recevoir des sollicitations en ce moment
     disponible = models.BooleanField(default=True)
@@ -100,9 +106,14 @@ class ProfilStructureSante(models.Model):
 
     nom_structure = models.CharField(max_length=200)
     adresse = models.CharField(max_length=255)
-    region = models.CharField(max_length=100)
-    ville = models.CharField(max_length=100)
-    quartier = models.CharField(max_length=100)
+    ville = models.ForeignKey(
+        'Ville',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
     date_creation = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -195,3 +206,30 @@ class TokenReinitialisationMotDePasse(models.Model):
     def __str__(self):
         statut = 'utilisé' if self.utilise else 'actif'
         return f"Token {statut} de {self.utilisateur.email}"
+
+
+
+class Region(models.Model):
+    nom = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ['nom']
+
+    def __str__(self):
+        return self.nom
+
+
+class Ville(models.Model):
+    nom = models.CharField(max_length=100)
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.CASCADE,
+        related_name='villes',
+    )
+
+    class Meta:
+        unique_together = ('nom', 'region')
+        ordering = ['nom']
+
+    def __str__(self):
+        return f"{self.nom} ({self.region.nom})"

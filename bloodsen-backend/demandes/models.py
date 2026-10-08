@@ -3,17 +3,23 @@ from django.db import models
 
 class Demande(models.Model):
     """
-    Demande de sang créée par une structure de santé.
-    Contient le besoin exprimé (groupe, quantité, urgence, message).
-    Le lieu n'est PAS stocké ici : il est accessible via `demande.structure`.
+    Demande de sang créée par une structure, un proche connecté ou un public.
     """
+
+    # ---- Énumérations ----
+
+    class TypeCreateur(models.TextChoices):
+        STRUCTURE = 'structure', 'Structure de santé'
+        PROCHE = 'proche', 'Proche (utilisateur connecté)'
+        PUBLIC = 'public', 'Personne sans compte'
 
     class Urgence(models.TextChoices):
         VITALE = 'vitale', 'Urgence vitale'
         URGENT = 'urgent', 'Urgent'
-        PROGRAMME = 'programme', 'Programmé'
+        PROGRAMME = 'programme', 'Programme'
 
-    class Statut(models.TextChoices):
+    class StatutDemande(models.TextChoices):
+        EN_VERIFICATION = 'en_verification', 'En vérification'
         EN_COURS = 'en_cours', 'En cours'
         TERMINEE = 'terminee', 'Terminée'
         EXPIREE = 'expiree', 'Expirée'
@@ -29,44 +35,95 @@ class Demande(models.Model):
         AB_POS = 'AB+', 'AB+'
         AB_NEG = 'AB-', 'AB-'
 
-    # Relation vers la structure qui crée la demande.
-    # "accounts.ProfilStructureSante" en chaîne = évite un import circulaire.
+    # ---- Champs principaux ----
+
+    # Qui a créé la demande : structure, proche connecté ou public
+    type_createur = models.CharField(
+        max_length=20,
+        choices=TypeCreateur.choices,
+        default=TypeCreateur.STRUCTURE,
+    )
+
+    # Utilisateur connecté (uniquement si PROCHE)
+    utilisateur = models.ForeignKey(
+        'accounts.Utilisateur',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='demandes_creees',
+    )
+
+    # Structure propriétaire (uniquement si STRUCTURE)
     structure = models.ForeignKey(
         'accounts.ProfilStructureSante',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='demandes',
     )
 
-    groupe_sanguin = models.CharField(max_length=3, choices=GroupeSanguin.choices)
-    quantite = models.PositiveIntegerField(
-        help_text="Nombre de poches de sang nécessaires"
+    # Ville de la demande (donne la région via ville.region)
+    ville = models.ForeignKey(
+        'accounts.Ville',
+        on_delete=models.PROTECT,
+        related_name='demandes',
     )
+
+    # Groupe sanguin recherché
+    groupe_sanguin = models.CharField(max_length=3, choices=GroupeSanguin.choices)
+
+    # Nombre de poches demandées
+    quantite = models.PositiveIntegerField()
+
+    # Niveau d'urgence
     urgence = models.CharField(max_length=20, choices=Urgence.choices)
 
-    # Message libre affiché aux donneurs sollicités
+    # Message libre affiché aux donneurs
     message = models.TextField(blank=True)
 
+    # Statut courant de la demande
     statut = models.CharField(
         max_length=20,
-        choices=Statut.choices,
-        default=Statut.EN_COURS,
+        choices=StatutDemande.choices,
+        default=StatutDemande.EN_COURS,
     )
 
     date_creation = models.DateTimeField(auto_now_add=True)
-    date_limite = models.DateTimeField(
-        help_text="Date/heure après laquelle la demande n'est plus valable"
-    )
+    date_limite = models.DateTimeField()
+
+    # ---- Champs spécifiques aux demandes PROCHE / PUBLIC ----
+
+    # Nom de la personne qui fait la demande (sans compte)
+    nom_demandeur = models.CharField(max_length=200, blank=True)
+
+    # Téléphone du demandeur (obligatoire pour PUBLIC)
+    telephone_demandeur = models.CharField(max_length=20, blank=True)
+
+    email_demandeur = models.EmailField(blank=True)
+
+    # True quand le téléphone est validé par code SMS
+    telephone_verifie = models.BooleanField(default=False)
+
+    # Nom du patient concerné
+    nom_patient = models.CharField(max_length=200, blank=True)
+
+    # Hôpital où se trouve le patient
+    lieu_prise_en_charge = models.CharField(max_length=255, blank=True)
+
+    # Token pour suivre la demande sans compte
+    token_suivi = models.CharField(max_length=64, unique=True, null=True, blank=True)
+
+    # Coordonnées GPS de l'urgence (si PUBLIC)
+    latitude_urgence = models.FloatField(null=True, blank=True)
+    longitude_urgence = models.FloatField(null=True, blank=True)
 
     def __str__(self):
-        return f"Demande {self.groupe_sanguin} x{self.quantite} — {self.structure.nom_structure}"
+        return f"Demande {self.groupe_sanguin} x{self.quantite} - {self.ville}"
 
 
 class Sollicitation(models.Model):
     """
-    Sollicitation envoyée à un donneur précis pour une demande précise.
-
-    Une sollicitation est créée automatiquement par le système de matching
-    quand une demande est publiée. Le donneur peut ensuite l'accepter ou la refuser.
+    Sollicitation envoyée à un donneur pour une demande.
     """
 
     class Statut(models.TextChoices):
@@ -93,16 +150,14 @@ class Sollicitation(models.Model):
     )
 
     date_creation = models.DateTimeField(auto_now_add=True)
-    date_reponse = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="Date à laquelle le donneur a répondu (accepté ou refusé)",
-    )
+    date_reponse = models.DateTimeField(null=True, blank=True)
+
+    # Distance entre la demande et le donneur (calculée au moment du matching)
+    distance_km = models.FloatField(null=True, blank=True)
 
     class Meta:
-        # Contrainte : un même donneur ne peut être sollicité qu'une seule fois
-        # pour une même demande.
+        # Un donneur ne peut être sollicité qu'une fois par demande
         unique_together = ('demande', 'donneur')
 
     def __str__(self):
-        return f"Sollicitation {self.donneur} → {self.demande}"
+        return f"Sollicitation {self.donneur} - {self.demande}"

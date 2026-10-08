@@ -8,7 +8,10 @@ from .views import (
     MesSollicitationsView,
     AnnulerDemandeView,
     DetailDemandeView,
-    DetailSollicitationView
+    DetailSollicitationView,
+    DemandeUrgentePublicView,
+    VerifierDemandeUrgenteView,
+    SuiviDemandeUrgenteView,
 )
 
 urlpatterns = [
@@ -31,4 +34,21 @@ urlpatterns = [
     ),
     path('sollicitations/', MesSollicitationsView.as_view(), name='mes-sollicitations'),
     path('sollicitations/<int:pk>/', DetailSollicitationView.as_view(), name='detail-sollicitation',),
+
+        # Demande urgente publique (sans compte)
+    path(
+        'demande-urgente/',
+        DemandeUrgentePublicView.as_view(),
+        name='demande-urgente-publique',
+    ),
+    path(
+        'demande-urgente/verifier/<str:token>/',
+        VerifierDemandeUrgenteView.as_view(),
+        name='verifier-demande-urgente',
+    ),
+    path(
+        'demande-urgente/<str:token>/',
+        SuiviDemandeUrgenteView.as_view(),
+        name='suivi-demande-urgente',
+    ),
 ]

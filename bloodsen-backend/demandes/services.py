@@ -10,39 +10,34 @@ from .utils import envoyer_email_sollicitation
 
 def trouver_donneurs_compatibles(demande):
     """
-    Retourne la liste des ProfilDonneur compatibles avec une demande.
+    Retourne les donneurs compatibles avec une demande.
+    Fonctionne pour les 3 types : STRUCTURE, PROCHE, PUBLIC.
 
-    Critères de matching (V1) :
-    - même groupe sanguin que la demande
-    - même région que la structure
-    - même ville que la structure
-    - disponible == True
-    - dernier don > 7 jours (ou jamais donné)
+    Critères :
+      - même groupe sanguin
+      - même région (via demande.ville.region)
+      - disponible == True
+      - dernier don > 7 jours (ou jamais donné)
     """
     seuil = timezone.now() - timedelta(days=7)
 
-    # On part de tous les donneurs et on applique les filtres.
-    # La jointure "sollicitations__participation__date_confirmation"
-    # traverse la chaîne de relations pour atteindre la date du dernier don.
+    # La région vient toujours de demande.ville
+    region = demande.ville.region
+
     donneurs = (
         ProfilDonneur.objects
         .filter(
             groupe_sanguin=demande.groupe_sanguin,
-            region=demande.structure.region,
-            ville=demande.structure.ville,
+            ville__region=region,
             disponible=True,
         )
         .annotate(
-            # Max() ajoute un champ calculé "dernier_don" à chaque donneur
             dernier_don=Max('sollicitations__participation__date_confirmation')
         )
         .filter(
-            # On garde les donneurs qui n'ont JAMAIS donné (dernier_don = None)
-            # OU dont le dernier don est antérieur au seuil de 7 jours.
             Q(dernier_don__isnull=True) | Q(dernier_don__lt=seuil)
         )
     )
-
     return list(donneurs)
 
 

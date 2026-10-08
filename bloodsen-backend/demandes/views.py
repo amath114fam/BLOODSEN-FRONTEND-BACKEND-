@@ -8,6 +8,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
+from rest_framework.permissions import AllowAny
+from participations.models import Participation
+from .serializers import DemandeUrgentePublicSerializer
+from .utils import envoyer_email_verification_demande
+
 
 from .models import Demande, Sollicitation
 from .serializers import DemandeCreateSerializer, DemandeSerializer, SollicitationSerializer
@@ -351,3 +356,127 @@ class DetailSollicitationView(APIView):
         # 4. Sérialiser et renvoyer
         serializer = SollicitationSerializer(sollicitation)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# ===================================================
+# Vue 1 : Créer une demande urgente (PUBLIC, sans compte)
+# ===================================================
+
+@extend_schema(
+    request=DemandeUrgentePublicSerializer,
+    responses=None,
+)
+class DemandeUrgentePublicView(APIView):
+    """
+    POST /api/demande-urgente/
+
+    Crée une demande urgente pour un proche hospitalisé.
+    Accessible SANS authentification.
+    Envoie un email avec un lien de vérification.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # 1. Valider les données
+        serializer = DemandeUrgentePublicSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # 2. Créer la demande (statut = EN_VERIFICATION)
+        demande = serializer.save()
+
+        # 3. Envoyer l'email de vérification
+        try:
+            envoyer_email_verification_demande(demande)
+        except Exception as e:
+            print(f"Erreur envoi email : {e}")
+
+        # 4. Réponse
+        return Response(
+            {
+                "message": "Votre demande a été enregistrée. "
+                           "Consultez votre email pour la vérifier.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# ===================================================
+# Vue 2 : Vérifier une demande urgente (via token email)
+# ===================================================
+
+@extend_schema(request=None, responses=None)
+class VerifierDemandeUrgenteView(APIView):
+    """
+    GET /api/demande-urgente/verifier/<token>/
+
+    Vérifie la demande et lance le matching automatique.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        # 1. Retrouver la demande
+        demande = get_object_or_404(Demande, token_suivi=token)
+
+        # 2. Vérifier que la demande est bien EN_VERIFICATION
+        if demande.statut != Demande.StatutDemande.EN_VERIFICATION:
+            return Response(
+                {"detail": "Cette demande a déjà été vérifiée."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 3. Marquer comme vérifiée
+        demande.telephone_verifie = True
+        demande.statut = Demande.StatutDemande.EN_COURS
+        demande.save(update_fields=['telephone_verifie', 'statut'])
+
+        # 4. Lancer le matching
+        from .services import creer_sollicitations_pour_demande
+        sollicitations = creer_sollicitations_pour_demande(demande)
+
+        return Response(
+            {
+                "message": "Votre demande est vérifiée. "
+                           "La recherche de donneurs a démarré.",
+                "nombre_sollicitations": len(sollicitations),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+# ===================================================
+# Vue 3 : Suivre une demande urgente
+# ===================================================
+
+@extend_schema(request=None, responses=None)
+class SuiviDemandeUrgenteView(APIView):
+    """
+    GET /api/demande-urgente/<token>/
+
+    Renvoie l'état de la demande (accessible sans compte).
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        demande = get_object_or_404(Demande, token_suivi=token)
+
+        # Compteurs
+        total_sollicitations = demande.sollicitations.count()
+        acceptees = demande.sollicitations.filter(statut='acceptee').count()
+        confirmees = Participation.objects.filter(
+            sollicitation__demande=demande,
+            statut='confirmee',
+        ).count()
+
+        return Response({
+            "groupe_sanguin": demande.groupe_sanguin,
+            "quantite": demande.quantite,
+            "urgence": demande.urgence,
+            "statut": demande.statut,
+            "ville": demande.ville.nom,
+            "nom_patient": demande.nom_patient,
+            "lieu_prise_en_charge": demande.lieu_prise_en_charge,
+            "date_creation": demande.date_creation,
+            "sollicitations_envoyees": total_sollicitations,
+            "sollicitations_acceptees": acceptees,
+            "participations_confirmees": confirmees,
+        }, status=status.HTTP_200_OK)

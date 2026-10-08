@@ -461,3 +461,37 @@ class ReinitialiserMotDePasseView(APIView):
             {"message": "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter."},
             status=status.HTTP_200_OK,
         )
+
+
+# ============================================================
+# VUE : liste des régions avec leurs villes
+# ============================================================
+
+@extend_schema(responses=None)
+class RegionsVillesView(APIView):
+    """
+    GET /api/regions/
+
+    Renvoie les 14 régions du Sénégal avec leurs villes imbriquées.
+    Utilisé par les selects liés (Région → Ville) du frontend.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from .models import Region
+
+        regions = Region.objects.prefetch_related('villes').all()
+
+        data = [
+            {
+                "id": region.id,
+                "nom": region.nom,
+                "villes": [
+                    {"id": v.id, "nom": v.nom}
+                    for v in region.villes.all()
+                ],
+            }
+            for region in regions
+        ]
+
+        return Response(data, status=status.HTTP_200_OK)

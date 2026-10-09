@@ -1,6 +1,8 @@
 from django.db import transaction
 from .models import Participation
 from .utils import envoyer_email_confirmation_participation
+from accounts.services import verifier_gamification
+from demandes.models import Demande
 
 
 def confirmer_participation(sollicitation):
@@ -37,6 +39,8 @@ def confirmer_participation(sollicitation):
         ).count()
         donneur.points_total = nb_dons * POINTS_PAR_DON
         donneur.save(update_fields=['points_total'])
+         # Mettre à jour le niveau et les badges du donneur
+        verifier_gamification(donneur)
 
         # 3. Vérifier si la demande est satisfaite
         demande = sollicitation.demande
@@ -46,7 +50,7 @@ def confirmer_participation(sollicitation):
         ).count()
 
         if total_poches >= demande.quantite:
-            demande.statut = demande.Statut.TERMINEE
+            demande.statut = Demande.StatutDemande.TERMINEE
             demande.save(update_fields=['statut'])
 
     # 4. Envoyer l'email de confirmation (EN DEHORS de la transaction)

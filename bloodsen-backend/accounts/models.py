@@ -90,6 +90,13 @@ class ProfilDonneur(models.Model):
 
     # Système de gamification (points accumulés à chaque don confirmé)
     points_total = models.PositiveIntegerField(default=0)
+    niveau = models.ForeignKey(
+        'Niveau',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='donneurs',
+    )
 
     def __str__(self):
         return f"{self.prenom} {self.nom}"
@@ -233,3 +240,70 @@ class Ville(models.Model):
 
     def __str__(self):
         return f"{self.nom} ({self.region.nom})"
+
+
+class Niveau(models.Model):
+    """
+    Palier de progression d'un donneur selon son total de points.
+    """
+    nom = models.CharField(max_length=50, unique=True)
+    points_requis = models.PositiveIntegerField()
+    couleur = models.CharField(max_length=20, help_text="Code hex (ex: #CD7F32)")
+    recompense = models.CharField(max_length=255, blank=True)
+    ordre = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Ordre croissant (0 = plus bas niveau)",
+    )
+
+    class Meta:
+        ordering = ['ordre']
+
+    def __str__(self):
+        return f"{self.nom} ({self.points_requis} pts)"
+
+
+class Badge(models.Model):
+    """
+    Badge débloqué par un donneur quand une condition est remplie.
+    """
+    nom = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    icone = models.CharField(
+        max_length=50,
+        help_text="Nom de l'icône Lucide (ex: droplet, award, star)",
+    )
+    condition = models.CharField(
+        max_length=255,
+        help_text="Texte lisible (ex: '1 don confirmé')",
+    )
+
+    class Meta:
+        ordering = ['nom']
+
+    def __str__(self):
+        return self.nom
+
+
+class BadgeObtenu(models.Model):
+    """
+    Trace l'obtention d'un badge par un donneur.
+    Un donneur ne peut obtenir un même badge qu'une seule fois.
+    """
+    donneur = models.ForeignKey(
+        ProfilDonneur,
+        on_delete=models.CASCADE,
+        related_name='badges_obtenus',
+    )
+    badge = models.ForeignKey(
+        Badge,
+        on_delete=models.CASCADE,
+        related_name='obtentions',
+    )
+    date_obtention = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('donneur', 'badge')
+        ordering = ['-date_obtention']
+
+    def __str__(self):
+        return f"{self.donneur} - {self.badge.nom}"

@@ -240,6 +240,20 @@ class MoiView(APIView):
                 "longitude": profil.longitude,
                 "disponible": profil.disponible,
                 "points_total": profil.points_total,
+                "niveau": {
+                    "nom": profil.niveau.nom,
+                    "couleur": profil.niveau.couleur,
+                    "recompense": profil.niveau.recompense,
+                } if profil.niveau else None,
+                "badges": [
+                    {
+                        "nom": b.badge.nom,
+                        "icone": b.badge.icone,
+                        "description": b.badge.description,
+                        "date_obtention": b.date_obtention,
+                    }
+                    for b in profil.badges_obtenus.select_related('badge')
+                ],
             }
 
         elif utilisateur.role == Utilisateur.Role.STRUCTURE:

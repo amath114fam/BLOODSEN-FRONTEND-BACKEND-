@@ -4,23 +4,24 @@
     <!-- Select Région -->
     <AppSelect
       id="region-select"
-      v-model="regionId"
+      :model-value="regionId"
       label="Région *"
       placeholder="Sélectionnez une région"
       :options="regionsOptions"
       :error="regionError"
-      @update:modelValue="onRegionChange"
+      @update:model-value="onRegionChange"
     />
 
     <!-- Select Ville (dépend de la région) -->
     <AppSelect
       id="ville-select"
-      v-model="villeId"
+      :model-value="villeId"
       label="Ville *"
       :placeholder="regionId ? 'Sélectionnez une ville' : 'Choisissez d\'abord une région'"
       :options="villesOptions"
       :error="villeError"
       :disabled="!regionId"
+      @update:model-value="onVilleChange"
     />
 
     <!-- Bouton de géolocalisation -->
@@ -43,12 +44,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { MapPin } from 'lucide-vue-next'
-import { watch } from 'vue'
 import api from '@/services/api'
 import AppSelect from '@/components/AppSelect.vue'
 
-// Props : permet au parent de récupérer la région, la ville, lat, long
-const props = defineProps({
+defineProps({
   regionError: { type: String, default: '' },
   villeError: { type: String, default: '' },
 })
@@ -59,7 +58,7 @@ const emit = defineEmits(['update:region', 'update:ville', 'update:coords'])
 // ÉTAT
 // ==========================================
 
-const regions = ref([])     // liste complète (avec villes imbriquées)
+const regions = ref([])
 const regionId = ref(null)
 const villeId = ref(null)
 const geoLoading = ref(false)
@@ -79,7 +78,7 @@ onMounted(async () => {
 })
 
 // ==========================================
-// OPTIONS POUR LES SELECTS
+// OPTIONS
 // ==========================================
 
 const regionsOptions = computed(() =>
@@ -88,25 +87,38 @@ const regionsOptions = computed(() =>
 
 const villesOptions = computed(() => {
   if (!regionId.value) return []
-  const region = regions.value.find(r => r.id === regionId.value)
+
+  const id = Number(regionId.value)
+
+  const region = regions.value.find(r => r.id === id)
   if (!region) return []
+
   return region.villes.map(v => ({ value: v.id, label: v.nom }))
 })
 
 // ==========================================
-// QUAND LA RÉGION CHANGE
+// CHANGEMENT DE RÉGION
 // ==========================================
 
-function onRegionChange() {
+function onRegionChange(value) {
+  // On convertit explicitement en nombre (AppSelect renvoie une string)
+  regionId.value = value ? Number(value) : null
+
   // On reset la ville car elle n'appartient plus à la région
   villeId.value = null
+
   emit('update:region', regionId.value)
   emit('update:ville', null)
 }
 
-// On émet aussi quand la ville change
-watch(villeId, (v) => emit('update:ville', v))
-watch(regionId, (v) => emit('update:region', v))
+// ==========================================
+// CHANGEMENT DE VILLE
+// ==========================================
+
+function onVilleChange(value) {
+  villeId.value = value ? Number(value) : null
+  emit('update:ville', villeId.value)
+}
 
 // ==========================================
 // GÉOLOCALISATION
@@ -123,13 +135,14 @@ function mePositionner() {
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      const lat = position.coords.latitude
-      const lng = position.coords.longitude
-      emit('update:coords', { latitude: lat, longitude: lng })
+      emit('update:coords', {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      })
       geoMessage.value = 'Position enregistrée.'
       geoLoading.value = false
     },
-    (error) => {
+    () => {
       geoMessage.value = 'Impossible de récupérer votre position.'
       geoLoading.value = false
     },

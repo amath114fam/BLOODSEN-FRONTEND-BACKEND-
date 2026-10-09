@@ -23,6 +23,8 @@ import { useAuthStore } from '@/stores/auth'
 import ForgotPasswordView from '@/views/public/ForgotPasswordView.vue'
 import ResetPasswordView from '@/views/public/ResetPasswordView.vue'
 import DemandeUrgenteView from '@/views/public/DemandeUrgenteView.vue'
+import VerifierDemandeView from '@/views/public/VerifierDemandeView.vue'
+import SuiviDemandeView from '@/views/public/SuiviDemandeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -62,6 +64,14 @@ const router = createRouter({
     {
       path: '/demande-urgente',
       component: DemandeUrgenteView,
+    },
+    {
+      path: '/verifier-demande',
+      component: VerifierDemandeView,
+    },
+    {
+      path: '/suivi-demande',
+      component: SuiviDemandeView,
     },
     {
       path: '/reinitialiser-mot-de-passe',

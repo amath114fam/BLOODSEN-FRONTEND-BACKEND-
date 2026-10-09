@@ -17,6 +17,7 @@ from .utils import envoyer_email_verification_demande
 from .models import Demande, Sollicitation
 from .serializers import DemandeCreateSerializer, DemandeSerializer, SollicitationSerializer
 from .services import creer_sollicitations_pour_demande
+from .services import creer_sollicitations_pour_demande
 
 
 
@@ -116,7 +117,11 @@ class CreerDemandeView(APIView):
         #    MAIS on lui passe un argument supplémentaire "structure" qui
         #    n'est PAS dans les données du formulaire (il vient de
         #    l'utilisateur connecté, pas du JSON).
-        demande = serializer.save(structure=request.user.profil_structure)
+        demande = serializer.save(
+            structure=request.user.profil_structure,
+            ville=request.user.profil_structure.ville,
+            type_createur=Demande.TypeCreateur.STRUCTURE,
+        )
 
         # 4. Lancer le matching : créer les sollicitations pour cette demande.
         #    On importe ici plutôt qu'en haut du fichier pour éviter un import
@@ -430,7 +435,6 @@ class VerifierDemandeUrgenteView(APIView):
         demande.save(update_fields=['telephone_verifie', 'statut'])
 
         # 4. Lancer le matching
-        from .services import creer_sollicitations_pour_demande
         sollicitations = creer_sollicitations_pour_demande(demande)
 
         return Response(

@@ -13,6 +13,10 @@
           mobiliser les donneurs compatibles autour de vous.
           <strong>Aucun compte n'est requis.</strong>
         </p>
+        <router-link to="/suivi-demande" class="suivi-link">
+          <Search :size="14" />
+          J'ai déjà un code de suivi
+        </router-link>
       </div>
 
       <!-- Message succès -->
@@ -172,7 +176,7 @@
 
 <script setup>
 import { reactive, ref, computed } from 'vue'
-import { AlertCircle, CheckCircle } from 'lucide-vue-next'
+import { AlertCircle, CheckCircle, Search } from 'lucide-vue-next'
 import api from '@/services/api'
 
 import AppCard from '@/components/AppCard.vue'
@@ -399,6 +403,33 @@ async function soumettre() {
   text-decoration: none;
   font-weight: 600;
 }
+
+.suivi-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  margin-top: 16px;
+  padding: 8px 16px;
+
+  border: 1px solid #e0e4ea;
+  border-radius: 999px;
+
+  background-color: #ffffff;
+  color: var(--bloodsen-dark);
+
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+
+  transition: all 0.15s ease;
+}
+
+.suivi-link:hover {
+  border-color: var(--bloodsen-red);
+  color: var(--bloodsen-red);
+}
+
 
 @media (max-width: 700px) {
   .page-header h1 { font-size: 28px; }

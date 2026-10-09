@@ -73,34 +73,25 @@ class DemandeCreateSerializer(serializers.ModelSerializer):
 
 class DemandeSerializer(serializers.ModelSerializer):
     """
-    Serializer utilisé pour LIRE une demande (GET).
+    Lecture d'une demande (STRUCTURE, PROCHE ou PUBLIC).
     """
+    # Nom + localisation selon le type
+    structure_nom = serializers.SerializerMethodField()
+    structure_region = serializers.SerializerMethodField()
+    structure_ville = serializers.SerializerMethodField()
 
-    structure_nom = serializers.CharField(
-        source='structure.nom_structure',
-        read_only=True,
-    )
-    structure_region = serializers.CharField(
-        source='structure.region',
-        read_only=True,
-    )
-    structure_ville = serializers.CharField(
-        source='structure.ville',
-        read_only=True,
-    )
     nombre_sollicitations = serializers.IntegerField(
         source='sollicitations.count',
         read_only=True,
     )
-    # Nombre de sollicitations encore en attente (non traitées)
     nombre_sollicitations_en_attente = serializers.SerializerMethodField()
-    # Nombre de participations confirmées
     nombre_participations_confirmees = serializers.SerializerMethodField()
 
     class Meta:
         model = Demande
         fields = [
             'id',
+            'type_createur',
             'structure_nom',
             'structure_region',
             'structure_ville',
@@ -116,50 +107,43 @@ class DemandeSerializer(serializers.ModelSerializer):
             'nombre_participations_confirmees',
         ]
 
+    def get_structure_nom(self, obj):
+        # STRUCTURE : nom_structure ; PROCHE/PUBLIC : lieu saisi
+        if obj.structure:
+            return obj.structure.nom_structure
+        return obj.lieu_prise_en_charge or "—"
+
+    def get_structure_region(self, obj):
+        # La région vient toujours de demande.ville
+        return obj.ville.region.nom if obj.ville else "—"
+
+    def get_structure_ville(self, obj):
+        return obj.ville.nom if obj.ville else "—"
+
     def get_nombre_sollicitations_en_attente(self, obj):
-        """Compte les sollicitations avec statut "en_attente"."""
         return obj.sollicitations.filter(statut='en_attente').count()
 
     def get_nombre_participations_confirmees(self, obj):
-        """Compte les participations confirmées liées aux sollicitations de cette demande."""
         return Participation.objects.filter(
             sollicitation__demande=obj,
             statut='confirmee',
         ).count()
 
+
+    
 class SollicitationSerializer(serializers.ModelSerializer):
     """
-    Serializer utilisé pour LIRE une sollicitation (GET ou après action).
-
-    On inclut des infos utiles au donneur (le nom de la structure,
-    son message) et au frontend pour l'affichage.
+    Lecture d'une sollicitation, adaptée aux 3 types de demandes.
     """
-
     demande_id = serializers.IntegerField(source='demande.id', read_only=True)
-    structure_nom = serializers.CharField(
-        source='demande.structure.nom_structure',
-        read_only=True,
-    )
-    structure_region = serializers.CharField(
-        source='demande.structure.region',
-        read_only=True,
-    )
-    structure_ville = serializers.CharField(
-        source='demande.structure.ville',
-        read_only=True,
-    )
-    groupe_sanguin = serializers.CharField(
-        source='demande.groupe_sanguin',
-        read_only=True,
-    )
-    urgence = serializers.CharField(
-        source='demande.urgence',
-        read_only=True,
-    )
-    message = serializers.CharField(
-        source='demande.message',
-        read_only=True,
-    )
+
+    structure_nom = serializers.SerializerMethodField()
+    structure_region = serializers.SerializerMethodField()
+    structure_ville = serializers.SerializerMethodField()
+
+    groupe_sanguin = serializers.CharField(source='demande.groupe_sanguin', read_only=True)
+    urgence = serializers.CharField(source='demande.urgence', read_only=True)
+    message = serializers.CharField(source='demande.message', read_only=True)
 
     class Meta:
         model = Sollicitation
@@ -177,6 +161,16 @@ class SollicitationSerializer(serializers.ModelSerializer):
             'date_reponse',
         ]
 
+    def get_structure_nom(self, obj):
+        if obj.demande.structure:
+            return obj.demande.structure.nom_structure
+        return obj.demande.lieu_prise_en_charge or "—"
+
+    def get_structure_region(self, obj):
+        return obj.demande.ville.region.nom if obj.demande.ville else "—"
+
+    def get_structure_ville(self, obj):
+        return obj.demande.ville.nom if obj.demande.ville else "—"
 # =====================================================
 # SERIALIZER : donneurs d'une structure
 # =====================================================
@@ -191,13 +185,19 @@ class DonneurStructureSerializer(serializers.Serializer):
     nom = serializers.CharField()
     prenom = serializers.CharField()
     groupe_sanguin = serializers.CharField()
-    ville = serializers.CharField()
-    region = serializers.CharField()
     telephone = serializers.CharField()
     initiales = serializers.CharField()
     nombre_sollicitations = serializers.IntegerField()
     nombre_participations = serializers.IntegerField()
     derniere_interaction = serializers.DateTimeField()
+    ville = serializers.SerializerMethodField()
+    region = serializers.SerializerMethodField()
+
+    def get_ville(self, obj):
+        return obj.ville.nom if obj.ville else "—"
+
+    def get_region(self, obj):
+        return obj.ville.region.nom if obj.ville else "—"
 
 
 # =====================================================

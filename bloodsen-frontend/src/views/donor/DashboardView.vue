@@ -129,15 +129,7 @@
       <!-- Colonne droite -->
       <div class="side-column">
 
-        <EngagementCard
-            level="Donneur Élite"
-            :current="engagement.donations"
-            :target="engagement.target"
-            :low-tier-label="`NIVEAU ${engagement.currentLevel}`"
-            :high-tier-label="`NIVEAU ${engagement.nextLevel} (HÉROS)`"
-            :participations="engagement.participations"
-            :points="engagement.points"
-        />
+        <GamificationCard :profil="profil" />
 
         <!-- Conseils du donneur -->
         <div class="tips-card">
@@ -182,6 +174,7 @@ import AppBadge from '@/components/AppBadge.vue'
 import AppButton from '@/components/AppButton.vue'
 import StatCard from '@/components/StatCard.vue'
 import EngagementCard from '@/components/EngagementCard.vue'
+import GamificationCard from '@/components/GamificationCard.vue'
 
 // ==========================================
 // ÉTAT GLOBAL

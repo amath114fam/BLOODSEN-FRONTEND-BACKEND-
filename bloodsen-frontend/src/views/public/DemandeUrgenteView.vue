@@ -48,9 +48,18 @@
               placeholder="Sélectionnez"
               :options="groupesOptions"
               :error="erreurs.groupe_sanguin?.[0]"
+            />
+            <AppSelect
+              id="urgence"
+              v-model="form.urgence"
+              label="Niveau d'urgence *"
+              placeholder="Sélectionnez"
+              :options="urgencesOptions"
+              :error="erreurs.urgence?.[0]"
               required
             />
-            <AppInput
+          </div>
+          <AppInput
               id="quantite"
               v-model.number="form.quantite"
               type="number"
@@ -58,17 +67,6 @@
               :min="1"
               :error="erreurs.quantite?.[0]"
               required
-            />
-          </div>
-
-          <AppSelect
-            id="urgence"
-            v-model="form.urgence"
-            label="Niveau d'urgence *"
-            placeholder="Sélectionnez"
-            :options="urgencesOptions"
-            :error="erreurs.urgence?.[0]"
-            required
           />
         </AppCard>
 
@@ -240,14 +238,11 @@ function onCoords({ latitude, longitude }) {
 // ==========================================
 
 async function soumettre() {
+  // Réinitialisation
   erreurGlobale.value = ''
   erreurs.value = {}
 
-  if (!form.ville_id) {
-    erreurGlobale.value = 'Veuillez sélectionner une ville.'
-    return
-  }
-
+  // Envoi direct au backend
   loading.value = true
   try {
     await api.post('/demande-urgente/', {
@@ -267,8 +262,10 @@ async function soumettre() {
     succes.value = true
   } catch (error) {
     if (error.response?.status === 400) {
+      // Le backend renvoie { champ: ["erreur"] } → affiché sous chaque champ
       erreurs.value = error.response.data
     } else {
+      // Erreurs réseau, 500, etc.
       erreurGlobale.value = 'Une erreur est survenue. Veuillez réessayer.'
     }
   } finally {

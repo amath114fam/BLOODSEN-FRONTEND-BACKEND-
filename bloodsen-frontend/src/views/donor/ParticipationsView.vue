@@ -125,17 +125,8 @@
         </div>
 
       </AppCard>
-      <!-- Engagement -->
-      <EngagementCard
-        :level="niveauLabel"
-        :current="engagement.current"
-        :target="engagement.target"
-        :participations="engagement.participations"
-        :points="engagement.points"
-        low-tier-label="BRONZE"
-        high-tier-label="ARGENT (HÉROS)"
-        progress-label="Prochain palier"
-      />
+
+      <GamificationCard :profil="profil" />
 
     </div>
 
@@ -152,13 +143,14 @@ import AppSelect from '@/components/AppSelect.vue'
 import AppBadge from '@/components/AppBadge.vue'
 import AppButton from '@/components/AppButton.vue'
 import StatCard from '@/components/StatCard.vue'
-import EngagementCard from '@/components/EngagementCard.vue'
+import GamificationCard from '@/components/GamificationCard.vue'
 
 // ==========================================
 // ÉTAT GLOBAL
 // ==========================================
 
 const auth = useAuthStore()
+const profil = computed(() => auth.user?.profil || {})
 
 const loading = ref(true)
 const participations = ref([])
@@ -247,7 +239,7 @@ const participationsAffichees = computed(() => {
     facility: p.structure_nom,
     group: p.demande_groupe_sanguin || p.donneur_groupe_sanguin,
     date: formaterDate(p.date_confirmation),
-    location: `${p.structure_ville}, ${p.structure_region}`,
+    location: `${p.structure_ville}`,
     status: p.statut === 'confirmee' ? 'confirmed' : 'cancelled',
   }))
 })

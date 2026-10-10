@@ -7,6 +7,8 @@ from django.utils import timezone
 from datetime import timedelta
 from accounts.models import Ville
 import secrets
+from accounts.constants import normaliser_telephone
+
 
 class DemandeCreateSerializer(serializers.ModelSerializer):
     """
@@ -26,6 +28,38 @@ class DemandeCreateSerializer(serializers.ModelSerializer):
             'date_limite',
         ]
         read_only_fields = ['id']
+        extra_kwargs = {
+            'groupe_sanguin': {
+                'error_messages': {
+                    'required': "Veuillez choisir un groupe sanguin.",
+                    'null': "Veuillez choisir un groupe sanguin.",
+                    'invalid_choice': "Veuillez choisir un groupe sanguin valide.",
+                },
+            },
+        }
+
+    def validate_groupe_sanguin(self, value):
+        """
+        Vérifie que le groupe sanguin est dans la liste autorisée.
+        (ChoiceField sur le modèle, mais on rend l'erreur explicite.)
+        """
+        groupes_valides = [g[0] for g in Demande.GroupeSanguin.choices]
+        if value not in groupes_valides:
+            raise serializers.ValidationError(
+                f"Groupe sanguin invalide. Valeurs autorisées : {', '.join(groupes_valides)}."
+            )
+        return value
+
+    def validate_urgence(self, value):
+        """
+        Vérifie que le niveau d'urgence est valide.
+        """
+        urgences_valides = [u[0] for u in Demande.Urgence.choices]
+        if value not in urgences_valides:
+            raise serializers.ValidationError(
+                f"Niveau d'urgence invalide. Valeurs autorisées : {', '.join(urgences_valides)}."
+            )
+        return value
 
     def validate_quantite(self, value):
         """
@@ -209,22 +243,21 @@ class DemandeUrgentePublicSerializer(serializers.Serializer):
     Valide la création d'une demande urgente par une personne
     sans compte (type_createur = PUBLIC).
     """
-    # Groupe sanguin recherché
-    groupe_sanguin = serializers.ChoiceField(choices=Demande.GroupeSanguin.choices)
 
-    # Nombre de poches
-    quantite = serializers.IntegerField(min_value=1)
+    # ---- Champs avec validation DRF native ----
 
-    # Niveau d'urgence
-    urgence = serializers.ChoiceField(choices=Demande.Urgence.choices)
+    groupe_sanguin = serializers.ChoiceField(choices=Demande.GroupeSanguin.choices,  error_messages={
+        'invalid_choice': "Veuillez choisir un groupe sanguin.",
+    },)
+    urgence = serializers.ChoiceField(choices=Demande.Urgence.choices, error_messages={
+        'invalid_choice': "Veuillez choisir le niveau d'urgence.",
+    },)
 
-    # Ville de l'urgence (ID)
     ville_id = serializers.PrimaryKeyRelatedField(
         queryset=Ville.objects.all(),
         source='ville',
     )
 
-    # Coordonnées GPS de l'urgence (optionnelles)
     latitude_urgence = serializers.FloatField(
         required=False, allow_null=True, min_value=-90, max_value=90,
     )
@@ -232,32 +265,77 @@ class DemandeUrgentePublicSerializer(serializers.Serializer):
         required=False, allow_null=True, min_value=-180, max_value=180,
     )
 
-    # Message pour les donneurs
-    message = serializers.CharField(
-        required=False, allow_blank=True, max_length=1000,
-    )
+    message = serializers.CharField(required=False, allow_blank=True, max_length=1000)
 
-    # Infos sur le demandeur (sans compte)
-    nom_demandeur = serializers.CharField(max_length=200)
-    telephone_demandeur = serializers.CharField(max_length=20)
     email_demandeur = serializers.EmailField()
 
-    # Infos sur le patient
+    # ---- Champs avec validation custom ----
+
+    quantite = serializers.IntegerField()
+    telephone_demandeur = serializers.CharField(max_length=20)
+    nom_demandeur = serializers.CharField(max_length=200)
     nom_patient = serializers.CharField(max_length=200)
     lieu_prise_en_charge = serializers.CharField(max_length=255)
 
+    # ==========================================
+    # VALIDATEURS
+    # ==========================================
+
+    def validate_quantite(self, value):
+        """Quantité entre 1 et 50 poches."""
+        if value < 1:
+            raise serializers.ValidationError("La quantité doit être d'au moins 1 poche.")
+        if value > 50:
+            raise serializers.ValidationError("La quantité ne peut pas dépasser 50 poches.")
+        return value
+
     def validate_telephone_demandeur(self, value):
+        """Téléphone sénégalais normalisé."""
         from accounts.constants import normaliser_telephone
         try:
             return normaliser_telephone(value)
         except ValueError as e:
             raise serializers.ValidationError(str(e))
 
-    def create(self, validated_data):
-        # On génère un token de suivi unique
-        token = secrets.token_urlsafe(48)
+    def validate_nom_demandeur(self, value):
+        """Lettres uniquement + longueur min/max."""
+        from accounts.constants import valider_nom_propre
+        try:
+            return valider_nom_propre(value, 'le nom du demandeur', min_length=2, max_length=200)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
 
-        # Date limite : 24h par défaut (urgence)
+    def validate_nom_patient(self, value):
+        """Lettres uniquement + longueur min/max."""
+        from accounts.constants import valider_nom_propre
+        try:
+            return valider_nom_propre(value, 'le nom du patient', min_length=2, max_length=200)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
+
+    def validate_lieu_prise_en_charge(self, value):
+        """Lieu : 3 à 255 caractères."""
+        value = value.strip()
+        if len(value) < 3:
+            raise serializers.ValidationError(
+                "Le lieu de prise en charge doit contenir au moins 3 caractères."
+            )
+        if len(value) > 255:
+            raise serializers.ValidationError(
+                "Le lieu de prise en charge ne peut pas dépasser 255 caractères."
+            )
+        return value
+
+    def validate_email_demandeur(self, value):
+        """Normalise l'email en minuscules."""
+        return value.strip().lower()
+
+    # ==========================================
+    # CRÉATION
+    # ==========================================
+
+    def create(self, validated_data):
+        token = secrets.token_urlsafe(48)
         date_limite = timezone.now() + timedelta(hours=24)
 
         return Demande.objects.create(

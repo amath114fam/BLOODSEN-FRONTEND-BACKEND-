@@ -173,7 +173,6 @@ import AppCard from '@/components/AppCard.vue'
 import AppBadge from '@/components/AppBadge.vue'
 import AppButton from '@/components/AppButton.vue'
 import StatCard from '@/components/StatCard.vue'
-import EngagementCard from '@/components/EngagementCard.vue'
 import GamificationCard from '@/components/GamificationCard.vue'
 
 // ==========================================

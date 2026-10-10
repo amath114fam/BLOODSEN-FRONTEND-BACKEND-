@@ -92,6 +92,7 @@
             </div>
           </div>
 
+          <!-- Message d'erreur global (erreurs non liées à un champ) -->
           <div v-if="erreurGlobale" class="signup-error">
             {{ erreurGlobale }}
           </div>
@@ -325,7 +326,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
 import { CheckCircle } from 'lucide-vue-next'
 
 import AppButton from '@/components/AppButton.vue'
@@ -402,6 +403,15 @@ function onCoordsStructure({ latitude, longitude }) {
 }
 
 // ==========================================
+// RÉINITIALISATION DES ERREURS AU CHANGEMENT DE RÔLE
+// ==========================================
+
+watch(selectedRole, () => {
+  erreursBackend.value = {}
+  erreurGlobale.value = ''
+})
+
+// ==========================================
 // VALIDATION
 // ==========================================
 
@@ -421,10 +431,6 @@ async function handleSubmitDonneur() {
   erreurGlobale.value = ''
   erreursBackend.value = {}
 
-  if (!formDonneur.ville_id) {
-    erreurGlobale.value = 'Veuillez sélectionner une ville.'
-    return
-  }
   if (formDonneur.mot_de_passe !== formDonneur.passwordConfirmation) {
     erreurGlobale.value = 'Les mots de passe ne correspondent pas.'
     return
@@ -466,10 +472,6 @@ async function handleSubmitStructure() {
   erreurGlobale.value = ''
   erreursBackend.value = {}
 
-  if (!formStructure.ville_id) {
-    erreurGlobale.value = 'Veuillez sélectionner une ville.'
-    return
-  }
   if (formStructure.mot_de_passe !== formStructure.passwordConfirmation) {
     erreurGlobale.value = 'Les mots de passe ne correspondent pas.'
     return
@@ -761,7 +763,7 @@ async function handleSubmitStructure() {
   line-height: 1.5;
 }
 
-/* Erreur */
+/* Erreur globale */
 .signup-error {
   padding: 12px 16px;
   margin-bottom: 16px;

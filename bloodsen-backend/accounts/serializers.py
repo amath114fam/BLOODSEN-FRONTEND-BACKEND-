@@ -17,12 +17,20 @@ class InscriptionDonneurSerializer(serializers.Serializer):
     nom = serializers.CharField(max_length=100)
     prenom = serializers.CharField(max_length=100)
     telephone = serializers.CharField(max_length=20)
-    groupe_sanguin = serializers.ChoiceField(choices=ProfilDonneur.GROUPES_SANGUINS)
+    groupe_sanguin = serializers.ChoiceField(choices=ProfilDonneur.GROUPES_SANGUINS, error_messages={
+        'invalid_choice': "Veuillez choisir un groupe sanguin.",
+    },)
 
     # Ville : on reçoit l'ID, on stocke l'objet
     ville_id = serializers.PrimaryKeyRelatedField(
         queryset=Ville.objects.all(),
         source='ville',
+        error_messages={
+            'required': "Veuillez choisir une ville.",
+            'null': "Veuillez choisir une ville.",
+            'does_not_exist': "Cette ville n'existe pas.",
+            'incorrect_type': "Identifiant de ville invalide.",
+        },
     )
 
     # Coordonnées GPS (optionnelles)
@@ -92,6 +100,12 @@ class InscriptionStructureSerializer(serializers.Serializer):
     ville_id = serializers.PrimaryKeyRelatedField(
         queryset=Ville.objects.all(),
         source='ville',
+        error_messages={
+            'required': "Veuillez choisir une ville.",
+            'null': "Veuillez choisir une ville.",
+            'does_not_exist': "Cette ville n'existe pas.",
+            'incorrect_type': "Identifiant de ville invalide.",
+        },
     )
 
     latitude = serializers.FloatField(

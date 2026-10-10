@@ -60,13 +60,13 @@
             />
           </div>
           <AppInput
-              id="quantite"
-              v-model.number="form.quantite"
-              type="number"
-              label="Nombre de poches *"
-              :min="1"
-              :error="erreurs.quantite?.[0]"
-              required
+            id="quantite"
+            v-model.number="form.quantite"
+            type="number"
+            label="Nombre de poches *"
+            :min="1"
+            :error="erreurs.quantite?.[0]"
+            required
           />
         </AppCard>
 

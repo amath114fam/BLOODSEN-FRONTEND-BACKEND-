@@ -14,6 +14,9 @@ from demandes.models import Demande, Sollicitation
 from demandes.serializers import DemandeSerializer, SollicitationSerializer, DonneurStructureSerializer
 from participations.models import Participation
 from accounts.models import ProfilDonneur
+from django.db.models import Sum
+        # 8. Générer les recommandations IA
+from .utils import generer_recommandations_predictions
 
 
 # ===================================================
@@ -346,3 +349,147 @@ class StructureDonneursView(APIView):
         # 5. Sérialiser et renvoyer
         serializer = DonneurStructureSerializer(resultats, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+# ===================================================
+# Vue : prédictions et analyse pour une structure
+# ===================================================
+
+@extend_schema(responses=None)
+class PredictionsStructureView(APIView):
+    """
+    GET /api/dashboard/structure/predictions/
+
+    Analyse les données actuelles pour suggérer des zones à cibler.
+    Basé sur :
+      - Les demandes de la structure
+      - Les donneurs disponibles par région
+      - Les groupes sanguins les plus demandés
+
+    Renvoie :
+      - stats_globales : chiffres clés
+      - par_region : demandes vs donneurs par région
+      - par_groupe : demandes vs donneurs par groupe sanguin
+      - zones_critiques : régions où il y a un déficit
+      - recommandations_ia : texte généré par Groq (ou None)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # 1. Vérifier le rôle
+        if request.user.role != 'structure':
+            return Response(
+                {"detail": "Cet endpoint est réservé aux structures."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        profil = request.user.profil_structure
+
+        # 2. Récupérer les demandes de la structure
+        demandes = Demande.objects.filter(structure=profil)
+
+        # 3. Stats globales
+        total_demandes = demandes.count()
+        total_dons = Participation.objects.filter(
+            sollicitation__demande__structure=profil,
+            statut=Participation.Statut.CONFIRMEE,
+        ).count()
+
+        total_poches_demandees = demandes.aggregate(
+            total=Sum('quantite')
+        )['total'] or 0
+
+        taux_satisfaction = (
+            round((total_dons / total_poches_demandees) * 100)
+            if total_poches_demandees > 0 else 0
+        )
+
+        # 4. Analyse par région
+        par_region = []
+
+        regions_concernees = demandes.values_list(
+            'ville__region__nom', flat=True
+        ).distinct()
+
+        for region_nom in regions_concernees:
+            demandes_region = demandes.filter(ville__region__nom=region_nom)
+
+            donneurs_region = ProfilDonneur.objects.filter(
+                ville__region__nom=region_nom,
+                disponible=True,
+            )
+
+            nb_demandes = demandes_region.count()
+            nb_donneurs = donneurs_region.count()
+
+            ratio = round(nb_demandes / nb_donneurs, 2) if nb_donneurs > 0 else None
+
+            par_region.append({
+                "region": region_nom,
+                "demandes": nb_demandes,
+                "donneurs_disponibles": nb_donneurs,
+                "ratio": ratio,
+            })
+
+        par_region.sort(
+            key=lambda x: x['ratio'] if x['ratio'] is not None else 999,
+            reverse=True,
+        )
+
+        # 5. Analyse par groupe sanguin
+        par_groupe = []
+
+        groupes_demandes = demandes.values_list(
+            'groupe_sanguin', flat=True
+        ).distinct()
+
+        for groupe in groupes_demandes:
+            nb_demandes = demandes.filter(groupe_sanguin=groupe).count()
+            nb_donneurs = ProfilDonneur.objects.filter(
+                groupe_sanguin=groupe,
+                disponible=True,
+            ).count()
+
+            par_groupe.append({
+                "groupe": groupe,
+                "demandes": nb_demandes,
+                "donneurs": nb_donneurs,
+                "alerte": nb_donneurs < nb_demandes,
+            })
+
+        par_groupe.sort(key=lambda x: x['demandes'], reverse=True)
+
+        # 6. Zones critiques
+        zones_critiques = []
+
+        for item in par_region:
+            if item['donneurs_disponibles'] == 0:
+                zones_critiques.append({
+                    "region": item['region'],
+                    "raison": "Aucun donneur disponible dans cette région.",
+                    "demandes": item['demandes'],
+                })
+            elif item['ratio'] and item['ratio'] > 3:
+                zones_critiques.append({
+                    "region": item['region'],
+                    "raison": f"Ratio élevé : {item['ratio']} demandes par donneur.",
+                    "demandes": item['demandes'],
+                })
+
+        # 7. Construire le dict de stats
+        stats = {
+            "stats_globales": {
+                "total_demandes": total_demandes,
+                "total_dons": total_dons,
+                "taux_satisfaction": taux_satisfaction,
+            },
+            "par_region": par_region,
+            "par_groupe": par_groupe,
+            "zones_critiques": zones_critiques,
+        }
+
+        recommandations = generer_recommandations_predictions(stats)
+
+        # 9. Réponse finale
+        return Response({
+            **stats,
+            "recommandations_ia": recommandations,
+        }, status=status.HTTP_200_OK)

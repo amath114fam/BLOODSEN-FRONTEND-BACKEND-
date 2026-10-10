@@ -31,15 +31,6 @@
       <span class="bottom-nav-label">Demandes</span>
     </router-link>
 
-    <!-- Bouton central surélevé -->
-    <router-link
-      to="/structure/demandes/creer"
-      class="bottom-nav-cta"
-      aria-label="Créer une demande"
-    >
-      <span class="cta-plus">+</span>
-    </router-link>
-
     <router-link
       to="/structure/donneurs"
       class="bottom-nav-item"
@@ -68,6 +59,19 @@
         </svg>
       </span>
       <span class="bottom-nav-label">Suivi</span>
+    </router-link>
+
+    <router-link
+      to="/structure/predictions"
+      class="bottom-nav-item"
+      active-class="active"
+    >
+      <span class="bottom-nav-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L14.5 9H22L16 13.5L18.5 21L12 16.5L5.5 21L8 13.5L2 9H9.5L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+        </svg>
+      </span>
+      <span class="bottom-nav-label">Prédictions</span>
     </router-link>
 
   </nav>
@@ -169,41 +173,7 @@ defineProps({
   font-weight: 700;
 }
 
-/* ========================================
-   BOUTON CENTRAL (CTA)
-======================================== */
-
-.bottom-nav-cta {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  flex-shrink: 0;
-
-  width: 52px;
-  height: 52px;
-  margin-top: -26px;
-
-  border-radius: 50%;
-
-  background-color: var(--bloodsen-red);
-  color: #ffffff;
-
-  box-shadow: 0 6px 16px rgba(217, 48, 48, 0.35);
-
-  text-decoration: none;
-}
-
-.cta-plus {
-  font-size: 26px;
-  font-weight: 400;
-  line-height: 1;
-
-  margin-top: -2px;
-}
-
 /* Visible uniquement sur mobile */
-
 @media (min-width: 769px) {
   .bottom-nav {
     display: none;

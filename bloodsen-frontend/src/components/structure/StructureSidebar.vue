@@ -69,6 +69,16 @@
         </span>
         Participations
       </router-link>
+      <router-link
+          to="/structure/predictions"
+          class="nav-item"
+          active-class="active"
+        >
+          <span class="nav-icon">
+            <Sparkles :size="18" :stroke-width="2" />
+          </span>
+          Prédictions IA
+      </router-link>
 
     </nav>
 
@@ -112,6 +122,7 @@
 import { useRouter, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { Sparkles } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()

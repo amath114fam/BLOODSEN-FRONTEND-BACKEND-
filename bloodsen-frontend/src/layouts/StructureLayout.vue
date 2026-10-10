@@ -99,7 +99,7 @@ const structureName = computed(() => {
 const structureSubtitle = computed(() => {
   const p = auth.user?.profil
   if (!p) return ''
-  return `Structure de santé • ${p.ville}, ${p.region}`
+  return `Structure de santé • ${p.ville.nom}, ${p.ville.region}`
 })
 
 // ==========================================

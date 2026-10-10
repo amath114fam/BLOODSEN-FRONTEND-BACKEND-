@@ -25,6 +25,7 @@ import ResetPasswordView from '@/views/public/ResetPasswordView.vue'
 import DemandeUrgenteView from '@/views/public/DemandeUrgenteView.vue'
 import VerifierDemandeView from '@/views/public/VerifierDemandeView.vue'
 import SuiviDemandeView from '@/views/public/SuiviDemandeView.vue'
+import PredictionsView from '@/views/structure/PredictionsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -105,6 +106,10 @@ const router = createRouter({
         {
           path: 'participations',
           component: ParticipationsView,
+        },
+        {
+          path: 'predictions',
+          component: PredictionsView,
         },
         {
           path: 'profil',

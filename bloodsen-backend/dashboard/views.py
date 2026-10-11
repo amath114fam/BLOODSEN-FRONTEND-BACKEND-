@@ -72,7 +72,7 @@ class DashboardDonneurView(APIView):
                 "nom": profil.nom,
                 "prenom": profil.prenom,
                 "groupe_sanguin": profil.groupe_sanguin,
-                "region": profil.region,
+                "region": profil.ville.region,
                 "ville": profil.ville,
                 "disponible": profil.disponible,
                 "points_total": profil.points_total,

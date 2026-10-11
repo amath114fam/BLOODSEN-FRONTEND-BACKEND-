@@ -211,12 +211,10 @@ const periodOptions = [
 const participationsFiltrees = computed(() => {
   let resultat = participations.value || []
 
-  // Filtre statut
   if (filters.status) {
     resultat = resultat.filter(p => p.statut === filters.status)
   }
 
-  // Filtre période
   if (filters.period === 'month') {
     const maintenant = new Date()
     const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1)
@@ -245,27 +243,6 @@ const participationsAffichees = computed(() => {
 })
 
 // ==========================================
-// ENGAGEMENT
-// ==========================================
-
-const engagement = computed(() => {
-  const dons = stats.value.confirmed || 0
-  const currentLevel = Math.min(Math.floor(dons / 5) + 1, 5)
-  const target = Math.min((currentLevel + 1) * 5, 30)
-
-  // Le points_total vient du backend (source de vérité unique).
-  // On ne le recalcule JAMAIS côté frontend.
-  const points = auth.user?.profil?.points_total || 0
-
-  return {
-    current: dons,
-    target,
-    participations: stats.value.total,
-    points,
-  }
-})
-
-// ==========================================
 // HELPERS
 // ==========================================
 
@@ -287,23 +264,20 @@ function statusLabel(status) {
   if (status === 'medical_refusal') return 'Refus médical'
   return 'Annulée'
 }
-
-// Libellé du niveau selon le nombre de dons
-const niveauLabel = computed(() => {
-  const dons = stats.value.confirmed || 0
-  if (dons >= 20) return 'Donneur Héros'
-  if (dons >= 15) return 'Donneur Élite'
-  if (dons >= 10) return 'Donneur Engagé'
-  if (dons >= 5) return 'Donneur Régulier'
-  return 'Donneur Débutant'
-})
 </script>
 
 <style scoped>
+/* ========================================
+   PAGE
+======================================== */
+
 .participations-view {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* ========================================
@@ -320,18 +294,14 @@ const niveauLabel = computed(() => {
 
 .page-heading h2 {
   margin: 0 0 6px;
-
   color: var(--bloodsen-dark);
-
   font-size: 30px;
   font-weight: 700;
 }
 
 .page-heading p {
   margin: 0;
-
   color: #6b7280;
-
   font-size: 14px;
 }
 
@@ -341,7 +311,7 @@ const niveauLabel = computed(() => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -351,7 +321,7 @@ const niveauLabel = computed(() => {
 
 .content-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -360,16 +330,17 @@ const niveauLabel = computed(() => {
    CARTE PARTICIPATIONS
 ======================================== */
 
+.participations-card {
+  min-width: 0;
+}
+
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-
   gap: 12px;
-
   padding: 18px 24px;
-
   border-bottom: 1px solid #e7e9ed;
 }
 
@@ -383,15 +354,11 @@ const niveauLabel = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 20px;
   height: 20px;
-
   border-radius: 50%;
-
   background-color: var(--bloodsen-red);
   color: #ffffff;
-
   font-size: 11px;
   font-weight: 700;
   font-style: italic;
@@ -399,9 +366,7 @@ const niveauLabel = computed(() => {
 
 .card-title h3 {
   margin: 0;
-
   color: var(--bloodsen-dark);
-
   font-size: 16px;
   font-weight: 700;
 }
@@ -436,37 +401,32 @@ const niveauLabel = computed(() => {
 
 .participations-table-wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .participations-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
 }
 
 .participations-table th {
   padding: 12px 24px;
-
   color: #8a94a3;
-
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-align: left;
-
   white-space: nowrap;
 }
 
 .participations-table td {
   padding: 16px 24px;
-
   border-top: 1px solid #f0f1f3;
-
   color: var(--bloodsen-dark);
   font-size: 14px;
-
   vertical-align: middle;
-
   white-space: nowrap;
 }
 
@@ -490,17 +450,25 @@ const niveauLabel = computed(() => {
    RESPONSIVE
 ======================================== */
 
+/* Écrans moyens : 1 colonne */
 @media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
   .content-grid {
     grid-template-columns: 1fr;
   }
 }
 
+/* Tablette : stats en 2 colonnes */
+@media (max-width: 900px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Mobile */
 @media (max-width: 700px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
 
   .page-heading h2 {
     font-size: 24px;
@@ -513,6 +481,7 @@ const niveauLabel = computed(() => {
   .card-header {
     flex-direction: column;
     align-items: stretch;
+    padding: 16px 20px;
   }
 
   .filters-row {
@@ -520,10 +489,18 @@ const niveauLabel = computed(() => {
     align-items: stretch;
   }
 
+  .inline-select {
+    width: 100%;
+  }
+
   .inline-select :deep(.select-group) {
     flex: 1;
     min-width: 0;
   }
 
+  .participations-table th,
+  .participations-table td {
+    padding: 12px 16px;
+  }
 }
 </style>

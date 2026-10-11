@@ -85,7 +85,6 @@
                   <span class="group-text">{{ request.group }}</span>
                 </td>
 
-
                 <td>
                   <AppBadge :variant="urgencyVariant(request.urgency)">
                     {{ urgencyLabel(request.urgency) }}
@@ -168,6 +167,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 import AppCard from '@/components/AppCard.vue'
 import AppBadge from '@/components/AppBadge.vue'
@@ -178,6 +178,8 @@ import GamificationCard from '@/components/GamificationCard.vue'
 // ==========================================
 // ÉTAT GLOBAL
 // ==========================================
+
+const auth = useAuthStore()
 
 const loading = ref(true)
 const erreur = ref('')
@@ -202,17 +204,14 @@ onMounted(async () => {
 // DONNÉES DÉRIVÉES
 // ==========================================
 
-// Profil du donneur
-const profil = computed(() => dashboard.value?.profil || {})
+const profil = computed(() => auth.user?.profil || {})
 
-// Compteurs
 const compteurs = computed(() => dashboard.value?.compteurs || {
   sollicitations_en_attente: 0,
   sollicitations_acceptees: 0,
   dons_effectues: 0,
 })
 
-// Dernières sollicitations (déjà au format SollicitationSerializer)
 const requests = computed(() => {
   const sollicitations = dashboard.value?.dernieres_sollicitations || []
   return sollicitations.map(s => ({
@@ -230,34 +229,6 @@ const requests = computed(() => {
 // ==========================================
 
 const prenom = computed(() => profil.value.prenom || 'Donneur')
-
-// Engagement (niveau, points, etc.)
-// On estime le niveau à partir du nombre de dons
-const engagement = computed(() => {
-  const dons = compteurs.value.dons_effectues || 0
-  const points = profil.value.points_total || 0
-
-  // Niveau 1 = 0-4 dons, Niveau 2 = 5-9, ..., Niveau 5 = 20+
-  const currentLevel = Math.min(Math.floor(dons / 5) + 1, 5)
-  const nextLevel = Math.min(currentLevel + 1, 5)
-  const target = nextLevel * 5
-
-  let label = 'Donneur Débutant'
-  if (currentLevel === 2) label = 'Donneur Régulier'
-  if (currentLevel === 3) label = 'Donneur Engagé'
-  if (currentLevel === 4) label = 'Donneur Élite'
-  if (currentLevel === 5) label = 'Donneur Héros'
-
-  return {
-    level: label,
-    donations: dons,
-    target,
-    currentLevel,
-    nextLevel,
-    participations: dons,
-    points,
-  }
-})
 
 // ==========================================
 // HELPERS
@@ -283,7 +254,7 @@ function statusLabel(status) {
 }
 
 // ==========================================
-// CONSEILS (statiques, pas dans l'API)
+// CONSEILS (statiques)
 // ==========================================
 
 const tips = ref([
@@ -294,10 +265,17 @@ const tips = ref([
 </script>
 
 <style scoped>
+/* ========================================
+   PAGE
+======================================== */
+
 .donor-dashboard-view {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* ========================================
@@ -314,18 +292,14 @@ const tips = ref([
 
 .page-heading h2 {
   margin: 0 0 6px;
-
   color: var(--bloodsen-dark);
-
   font-size: 30px;
   font-weight: 700;
 }
 
 .page-heading p {
   margin: 0;
-
   color: #6b7280;
-
   font-size: 14px;
 }
 
@@ -335,7 +309,7 @@ const tips = ref([
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -345,7 +319,7 @@ const tips = ref([
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
 }
@@ -354,16 +328,17 @@ const tips = ref([
    SOLLICITATIONS RÉCENTES
 ======================================== */
 
+.requests-card {
+  min-width: 0;
+}
+
 .requests-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-
   gap: 10px;
-
   padding: 18px 24px;
-
   border-bottom: 1px solid #e7e9ed;
 }
 
@@ -377,15 +352,11 @@ const tips = ref([
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 20px;
   height: 20px;
-
   border-radius: 50%;
-
   background-color: var(--bloodsen-red);
   color: #ffffff;
-
   font-size: 11px;
   font-weight: 700;
   font-style: italic;
@@ -393,47 +364,39 @@ const tips = ref([
 
 .requests-title h3 {
   margin: 0;
-
   color: var(--bloodsen-dark);
-
   font-size: 16px;
   font-weight: 700;
 }
 
 .requests-table-wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .requests-table {
   width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
 }
 
 .requests-table th {
   padding: 12px 24px;
-
   color: #8a94a3;
-
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-align: left;
-
   white-space: nowrap;
 }
 
 .requests-table td {
   padding: 16px 24px;
-
   border-top: 1px solid #f0f1f3;
-
   color: var(--bloodsen-dark);
   font-size: 14px;
-
   vertical-align: middle;
-
-  white-space: nowrap;
 }
 
 .requests-table td strong {
@@ -445,7 +408,6 @@ const tips = ref([
 .request-location {
   display: block;
   margin-top: 2px;
-
   color: #8a94a3;
   font-size: 12.5px;
 }
@@ -454,11 +416,6 @@ const tips = ref([
   color: var(--bloodsen-red);
   font-size: 14px;
   font-weight: 700;
-}
-
-.distance-cell {
-  color: #4a5568;
-  font-size: 13px;
 }
 
 .status-text {
@@ -482,139 +439,14 @@ const tips = ref([
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-/* Engagement */
-
-.engagement-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  margin-bottom: 20px;
-}
-
-.engagement-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  width: 36px;
-  height: 36px;
-
-  border-radius: 50%;
-
-  background-color: #eafaf0;
-  color: #1e9e5a;
-}
-
-.engagement-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.engagement-header h3 {
-  margin: 0 0 2px;
-
-  color: var(--bloodsen-dark);
-
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.engagement-header p {
-  margin: 0;
-
-  color: #6b7280;
-
-  font-size: 12.5px;
-}
-
-.engagement-progress-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  margin-bottom: 8px;
-
-  color: var(--bloodsen-dark);
-  font-size: 13px;
-}
-
-.engagement-progress-row strong {
-  color: var(--bloodsen-dark);
-}
-
-.progress-track {
-  height: 8px;
-  margin-bottom: 8px;
-
-  border-radius: 4px;
-
-  background-color: #f1f3f5;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-
-  border-radius: 4px;
-
-  background-color: #1e9e5a;
-}
-
-.progress-levels {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  color: #8a94a3;
-
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-
-.engagement-divider {
-  height: 1px;
-  margin: 20px 0;
-
-  background-color: #eef0f2;
-}
-
-.engagement-metrics {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.engagement-metric {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.engagement-metric span {
-  color: #8a94a3;
-
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.engagement-metric strong {
-  color: var(--bloodsen-dark);
-  font-size: 17px;
+  min-width: 0;
 }
 
 /* Conseils */
 
 .tips-card {
   padding: 24px;
-
   border-radius: 12px;
-
   background-color: #10131a;
   color: #ffffff;
 }
@@ -623,7 +455,6 @@ const tips = ref([
   display: flex;
   align-items: center;
   gap: 10px;
-
   margin-bottom: 20px;
 }
 
@@ -631,7 +462,6 @@ const tips = ref([
   display: flex;
   align-items: center;
   justify-content: center;
-
   color: var(--bloodsen-red);
 }
 
@@ -642,7 +472,6 @@ const tips = ref([
 
 .tips-header h3 {
   margin: 0;
-
   font-size: 15px;
   font-weight: 700;
 }
@@ -651,10 +480,8 @@ const tips = ref([
   display: flex;
   flex-direction: column;
   gap: 16px;
-
   margin: 0 0 18px;
   padding: 0;
-
   list-style: none;
 }
 
@@ -662,9 +489,7 @@ const tips = ref([
   display: flex;
   align-items: flex-start;
   gap: 12px;
-
   color: rgba(255, 255, 255, 0.82);
-
   font-size: 13px;
   line-height: 1.5;
 }
@@ -676,10 +501,8 @@ const tips = ref([
 
 .tips-link {
   color: var(--bloodsen-red);
-
   font-size: 13px;
   font-weight: 700;
-
   text-decoration: none;
 }
 
@@ -691,16 +514,36 @@ const tips = ref([
    RESPONSIVE
 ======================================== */
 
-@media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+/* Grands écrans (par défaut) : 4 stat-cards + 2 colonnes */
+
+/* Écrans moyens : passage en 1 colonne pour le dashboard-grid */
+@media (max-width: 1400px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
   }
 
-  .dashboard-grid {
+  .side-column {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+/* Tablette : 2 stat-cards par ligne */
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Petit écran : side-column en 1 colonne aussi */
+@media (max-width: 900px) {
+  .side-column {
     grid-template-columns: 1fr;
   }
 }
 
+/* Mobile : 1 stat-card par ligne */
 @media (max-width: 700px) {
   .stats-grid {
     grid-template-columns: 1fr;
@@ -710,8 +553,13 @@ const tips = ref([
     font-size: 24px;
   }
 
-  .page-heading-row :deep(button) {
-    width: 100%;
+  .requests-header {
+    padding: 16px 20px;
+  }
+
+  .requests-table th,
+  .requests-table td {
+    padding: 12px 16px;
   }
 }
 </style>

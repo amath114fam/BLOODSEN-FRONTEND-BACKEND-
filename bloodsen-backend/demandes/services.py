@@ -9,10 +9,10 @@ from .utils import envoyer_email_sollicitation
 
 
 # Nombre maximum de donneurs sollicités par demande
-MAX_DONNEURS_PAR_DEMANDE = 20
+MAX_DONNEURS_PAR_DEMANDE = 50
 
 # Délai minimum entre deux dons (en jours)
-DELAI_MIN_ENTRE_DONS = 7
+DELAI_MIN_ENTRE_DONS = 90
 
 
 def calculer_distance_km(lat1, lon1, lat2, lon2):

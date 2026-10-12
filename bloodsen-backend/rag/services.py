@@ -3,7 +3,7 @@ from django.conf import settings
 from pypdf import PdfReader
 from pgvector.django import CosineDistance
 from groq import Groq
-
+import re
 
 
 from .models import Document, DocumentChunk
@@ -236,6 +236,15 @@ def construire_contexte(chunks):
     return '\n\n'.join(blocs) + '\n\n---'
 
 
+def _nettoyer_texte(texte):
+    """
+    Retire le formatage que le modèle ajoute parfois malgré les consignes :
+    astérisques, dièses, guillemets et tirets de liste en début de ligne.
+    """
+    texte = re.sub(r'[*#"“”]', "", texte)
+    texte = re.sub(r"^[ \t]*[-–—•][ \t]+", "", texte, flags=re.MULTILINE)
+    return texte.strip()
+
 # =====================================================
 # 8. Génération de réponse via Groq
 # =====================================================
@@ -260,6 +269,8 @@ def generer_reponse(question, contexte):
         "3. N'invente JAMAIS d'information. N'utilise PAS tes connaissances générales.\n"
         "4. Réponds en français, de manière claire et concise.\n"
         "5. Si pertinent, cite la source (ex: « Selon le Guide du don de sang... »).\n"
+        "6. FORMAT : écris uniquement en texte professionnel. N'utilise jamais "
+        "d'astérisques(*), de dièses(#), de tirets en début de ligne, de guillemets "
     )
 
     prompt_utilisateur = (
@@ -278,7 +289,7 @@ def generer_reponse(question, contexte):
         max_tokens=1024,
     )
 
-    return reponse.choices[0].message.content
+    return _nettoyer_texte(reponse.choices[0].message.content)
 
 
 # =====================================================

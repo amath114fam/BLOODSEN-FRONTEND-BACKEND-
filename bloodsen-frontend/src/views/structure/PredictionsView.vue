@@ -1,12 +1,35 @@
 <template>
   <div class="predictions-view">
 
-    <div class="page-heading">
-      <h2>Prédictions & Analyse</h2>
-      <p>
-        Analyse intelligente de vos demandes et des donneurs disponibles
-        pour cibler vos actions de mobilisation.
-      </p>
+    <div class="page-heading-row">
+
+      <div class="page-heading">
+        <h2>Prédictions & Analyse</h2>
+        <p>
+          Analyse intelligente de vos demandes et des donneurs disponibles
+          pour cibler vos actions de mobilisation.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="refresh-button"
+        :disabled="actualisationEnCours || loading"
+        @click="relancerPrediction"
+      >
+        <RefreshCw
+          :size="16"
+          :stroke-width="2"
+          :class="{ spinning: actualisationEnCours }"
+        />
+        <template v-if="actualisationEnCours">
+          Analyse en cours...
+        </template>
+        <template v-else>
+          Relancer l'analyse
+        </template>
+      </button>
+
     </div>
 
     <!-- Chargement -->
@@ -194,6 +217,7 @@ import {
   ClipboardList,
   CheckCircle,
   TrendingUp,
+  RefreshCw,
 } from 'lucide-vue-next'
 import api from '@/services/api'
 
@@ -212,7 +236,9 @@ const data = ref(null)
 // CHARGEMENT
 // ==========================================
 
-onMounted(async () => {
+async function chargerPredictions() {
+  loading.value = true
+  erreur.value = ''
   try {
     const { data: reponse } = await api.get('/dashboard/structure/predictions/')
     data.value = reponse
@@ -221,8 +247,21 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
 
+// État de rechargement (différent du "loading" initial)
+const actualisationEnCours = ref(false)
+
+async function relancerPrediction() {
+  actualisationEnCours.value = true
+  try {
+    await chargerPredictions()
+  } finally {
+    actualisationEnCours.value = false
+  }
+}
+
+onMounted(chargerPredictions)
 // ==========================================
 // PARAGRAPHES IA
 // ==========================================
@@ -259,6 +298,53 @@ function barWidth(region) {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.page-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.refresh-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 18px;
+
+  border: 1px solid var(--bloodsen-red);
+  border-radius: 8px;
+
+  background-color: #ffffff;
+  color: var(--bloodsen-red);
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: all 0.15s ease;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background-color: #fdecec;
+}
+
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refresh-button :deep(svg).spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .page-heading h2 {
@@ -596,5 +682,13 @@ function barWidth(region) {
 @media (max-width: 900px) {
   .stats-grid { grid-template-columns: 1fr; }
   .page-heading h2 { font-size: 24px; }
+  .page-heading-row {
+    flex-direction: column;
+  }
+
+  .refresh-button {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

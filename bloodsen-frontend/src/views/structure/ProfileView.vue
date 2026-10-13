@@ -44,18 +44,13 @@
         </div>
 
         <div class="info-item">
+          <span class="info-label">Adresse</span>
+          <strong class="info-value">{{ structure.adresse }}</strong>
+        </div>
+
+        <div class="info-item">
           <span class="info-label">Région</span>
           <strong class="info-value">{{ structure.region }}</strong>
-        </div>
-
-        <div class="info-item">
-          <span class="info-label">Ville</span>
-          <strong class="info-value">{{ structure.city }}</strong>
-        </div>
-
-        <div class="info-item">
-          <span class="info-label">Quartier</span>
-          <strong class="info-value">{{ structure.district }}</strong>
         </div>
 
       </div>
@@ -143,11 +138,10 @@ const profil = computed(() => auth.user?.profil || {})
 // Informations de la structure
 const structure = computed(() => ({
   name: profil.value.nom_structure || '—',
-  region: profil.value.region || '—',
-  city: profil.value.ville || '—',
-  district: profil.value.quartier || '—',
+  adresse: profil.value.adresse || '—',
+  region: profil.value.ville?.region || '—',
+  city: profil.value.ville?.nom || '—',
 }))
-
 // Informations du compte
 const account = computed(() => ({
   email: auth.user?.email || '—',

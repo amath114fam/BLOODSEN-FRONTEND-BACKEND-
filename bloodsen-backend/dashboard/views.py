@@ -17,6 +17,8 @@ from accounts.models import ProfilDonneur
 from django.db.models import Sum
         # 8. Générer les recommandations IA
 from .utils import generer_recommandations_predictions
+from demandes.management.commands.expirer_demandes import executer_expiration_demandes
+
 
 
 # ===================================================
@@ -43,6 +45,8 @@ class DashboardDonneurView(APIView):
                 {"detail": "Cet endpoint est réservé aux donneurs."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+                # Expirer les demandes dépassées avant d'afficher le suivi
+        executer_expiration_demandes()
 
         profil = request.user.profil_donneur
 
@@ -72,10 +76,13 @@ class DashboardDonneurView(APIView):
                 "nom": profil.nom,
                 "prenom": profil.prenom,
                 "groupe_sanguin": profil.groupe_sanguin,
-                "region": profil.ville.region,
-                "ville": profil.ville,
-                "disponible": profil.disponible,
-                "points_total": profil.points_total,
+                "ville": {
+                    "id": profil.ville.id,
+                    "nom": profil.ville.nom,
+                    "region": profil.ville.region.nom,
+                } if profil.ville else None,
+                "latitude": profil.latitude,
+                "longitude": profil.longitude,
             },
             "compteurs": {
                 "sollicitations_en_attente": sollicitations_en_attente,
@@ -114,17 +121,19 @@ class DashboardStructureView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        executer_expiration_demandes()
+
         profil = request.user.profil_structure
 
         # 2. Compteurs sur les demandes
         demandes_actives = Demande.objects.filter(
             structure=profil,
-            statut=Demande.Statut.EN_COURS,
+            statut=Demande.StatutDemande.EN_COURS,
         ).count()
 
         demandes_terminees = Demande.objects.filter(
             structure=profil,
-            statut=Demande.Statut.TERMINEE,
+            statut=Demande.StatutDemande.TERMINEE,
         ).count()
 
         # 3. Compteurs sur les sollicitations et participations
@@ -147,8 +156,11 @@ class DashboardStructureView(APIView):
             "profil": {
                 "nom_structure": profil.nom_structure,
                 "adresse": profil.adresse,
-                "region": profil.region,
-                "ville": profil.ville,
+                "ville": {
+                    "id": profil.ville.id,
+                    "nom": profil.ville.nom,
+                    "region": profil.ville.region.nom,
+                } if profil.ville else None,
             },
             "compteurs": {
                 "demandes_actives": demandes_actives,
@@ -331,8 +343,8 @@ class StructureDonneursView(APIView):
                 'nom': donneur.nom,
                 'prenom': donneur.prenom,
                 'groupe_sanguin': donneur.groupe_sanguin,
-                'ville': donneur.ville,
-                'region': donneur.region,
+                'ville': donneur.ville.nom if donneur.ville else '—',
+                'region': donneur.ville.region.nom if donneur.ville else '—',
                 'telephone': donneur.telephone,
                 'initiales': initiales,
                 'nombre_sollicitations': nombre_sollicitations,

@@ -33,7 +33,7 @@
 
         <!-- Retour accueil -->
         <router-link to="/" class="back-home">
-          <span>←</span>
+          <ArrowLeft :size="18" :stroke-width="2" />
           Retour à l'accueil
         </router-link>
 
@@ -77,7 +77,7 @@
                 :class="{ active: selectedRole === 'donor' }"
                 @click="selectedRole = 'donor'"
               >
-                <span class="role-icon">♡</span>
+                <Heart :size="18" :stroke-width="2" class="role-icon" />
                 Donneur bénévole
               </button>
               <button
@@ -86,7 +86,7 @@
                 :class="{ active: selectedRole === 'structure' }"
                 @click="selectedRole = 'structure'"
               >
-                <span class="role-icon">♜</span>
+                <Hospital :size="18" :stroke-width="2" class="role-icon" />
                 Structure de santé
               </button>
             </div>
@@ -327,7 +327,7 @@
 
 <script setup>
 import { reactive, ref, computed, watch } from 'vue'
-import { CheckCircle } from 'lucide-vue-next'
+import { CheckCircle, ArrowLeft, Heart, Hospital } from 'lucide-vue-next'
 
 import AppButton from '@/components/AppButton.vue'
 import AppInput from '@/components/AppInput.vue'
@@ -553,11 +553,6 @@ async function handleSubmitStructure() {
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
-}
-
-.back-home span {
-  font-size: 22px;
-  line-height: 1;
 }
 
 .back-home:hover {

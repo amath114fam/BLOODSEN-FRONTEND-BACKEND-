@@ -228,11 +228,16 @@ class DonneurStructureSerializer(serializers.Serializer):
     region = serializers.SerializerMethodField()
 
     def get_ville(self, obj):
+        # obj peut être un dict (construit manuellement dans la vue)
+        # ou un objet ProfilDonneur
+        if isinstance(obj, dict):
+            return obj.get('ville', '—')
         return obj.ville.nom if obj.ville else "—"
 
     def get_region(self, obj):
+        if isinstance(obj, dict):
+            return obj.get('region', '—')
         return obj.ville.region.nom if obj.ville else "—"
-
 
 # =====================================================
 # SERIALIZER : demande urgente sans compte (PUBLIC)

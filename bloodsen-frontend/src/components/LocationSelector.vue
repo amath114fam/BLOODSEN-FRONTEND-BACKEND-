@@ -47,9 +47,12 @@ import { MapPin } from 'lucide-vue-next'
 import api from '@/services/api'
 import AppSelect from '@/components/AppSelect.vue'
 
-defineProps({
+const props = defineProps({
   regionError: { type: String, default: '' },
   villeError: { type: String, default: '' },
+  // Valeurs initiales (pré-remplissage depuis le profil existant)
+  initialRegionId: { type: [Number, String], default: null },
+  initialVilleId: { type: [Number, String], default: null },
 })
 
 const emit = defineEmits(['update:region', 'update:ville', 'update:coords'])
@@ -72,6 +75,16 @@ onMounted(async () => {
   try {
     const { data } = await api.get('/auth/regions/')
     regions.value = data
+
+    // Pré-sélectionner la région et la ville si fournies
+    if (props.initialRegionId) {
+      regionId.value = Number(props.initialRegionId)
+    }
+    if (props.initialVilleId) {
+      villeId.value = Number(props.initialVilleId)
+      // Informer le parent pour qu'il ait la valeur
+      emit('update:ville', villeId.value)
+    }
   } catch (e) {
     // Silencieux
   }

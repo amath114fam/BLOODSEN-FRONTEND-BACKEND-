@@ -18,6 +18,8 @@ from .models import Demande, Sollicitation
 from .serializers import DemandeCreateSerializer, DemandeSerializer, SollicitationSerializer
 from .services import creer_sollicitations_pour_demande
 from .services import creer_sollicitations_pour_demande
+from demandes.management.commands.expirer_demandes import executer_expiration_demandes
+
 
 
 
@@ -162,6 +164,8 @@ class ListeDemandesView(APIView):
                 {"detail": "Seule une structure peut consulter cette liste."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        
+        executer_expiration_demandes()
 
         # 2. Récupérer les demandes de la structure connectée,
         #    triées par date de création décroissante (les plus récentes d'abord).
@@ -315,6 +319,11 @@ class DetailDemandeView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        # Expirer les demandes dépassées avant d'afficher la liste
+        executer_expiration_demandes()
+
+        demande.refresh_from_db()
+
         # 3. Vérifier que la structure est bien propriétaire
         if demande.structure != request.user.profil_structure:
             return Response(
@@ -461,7 +470,13 @@ class SuiviDemandeUrgenteView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, token):
+                # Expirer les demandes dépassées avant d'afficher le suivi
         demande = get_object_or_404(Demande, token_suivi=token)
+
+        executer_expiration_demandes()
+
+        demande.refresh_from_db()
+
 
         # Compteurs
         total_sollicitations = demande.sollicitations.count()

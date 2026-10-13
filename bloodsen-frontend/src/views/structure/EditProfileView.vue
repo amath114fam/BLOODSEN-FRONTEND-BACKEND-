@@ -44,27 +44,14 @@
           required
         />
 
-        <AppSelect
-          id="region"
-          v-model="form.region"
-          label="Région *"
-          placeholder="Sélectionnez une région"
-          :options="regionsOptions"
-          required
-        />
-
-        <AppInput
-          id="city"
-          v-model="form.ville"
-          label="Ville *"
-          required
-        />
-
-        <AppInput
-          id="district"
-          v-model="form.quartier"
-          label="Quartier *"
-          required
+        <!-- Localisation (Région + Ville) -->
+        <LocationSelector
+          :region-error="erreursBackend.region?.[0] || ''"
+          :ville-error="erreursBackend.ville_id?.[0] || ''"
+          :initial-region-id="auth.user?.profil?.ville?.region_id"
+          :initial-ville-id="auth.user?.profil?.ville?.id"
+          @update:ville="form.ville_id = $event"
+          @update:coords="onCoords"
         />
 
       </AppCard>
@@ -140,13 +127,11 @@
         <AppButton
           type="submit"
           variant="primary"
+          :disabled="loading"
         >
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M5 4H16L19 7V19C19 19.55 18.55 20 18 20H5C4.45 20 4 19.55 4 19V5C4 4.45 4.45 4 5 4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-            <path d="M8 4V9H15V4" stroke="currentColor" stroke-width="2" />
-            <path d="M7 20V13H16V20" stroke="currentColor" stroke-width="2" />
-          </svg>
-          Enregistrer les modifications
+          <Save :size="18" :stroke-width="2" />
+          <template v-if="loading">Enregistrement...</template>
+          <template v-else>Enregistrer les modifications</template>
         </AppButton>
 
       </div>
@@ -157,17 +142,16 @@
 </template>
 
 <script setup>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
-import { CheckCircle, AlertCircle } from 'lucide-vue-next'
+import { CheckCircle, AlertCircle, Save } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
-import AppSelect from '@/components/AppSelect.vue'
 import AppButton from '@/components/AppButton.vue'
-import { REGIONS_SENEGAL } from '@/constants/regions'
+import LocationSelector from '@/components/LocationSelector.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -187,18 +171,19 @@ const erreursBackend = ref({})
 const form = reactive({
   nom_structure: '',
   adresse: '',
-  region: '',
-  ville: '',
-  quartier: '',
+  ville_id: null,
+  latitude: null,
+  longitude: null,
 })
 
 // ==========================================
-// OPTIONS
+// GÉOLOCALISATION
 // ==========================================
 
-const regionsOptions = computed(() =>
-  REGIONS_SENEGAL.map(r => ({ value: r, label: r }))
-)
+function onCoords({ latitude, longitude }) {
+  form.latitude = latitude
+  form.longitude = longitude
+}
 
 // ==========================================
 // PRÉ-REMPLISSAGE
@@ -217,9 +202,9 @@ onMounted(async () => {
 
   form.nom_structure = profil.nom_structure || ''
   form.adresse = profil.adresse || ''
-  form.region = profil.region || ''
-  form.ville = profil.ville || ''
-  form.quartier = profil.quartier || ''
+  form.ville_id = profil.ville?.id || null
+  form.latitude = profil.latitude || null
+  form.longitude = profil.longitude || null
 })
 
 // ==========================================
@@ -233,9 +218,9 @@ async function handleSubmit() {
   const donnees = {
     nom_structure: form.nom_structure,
     adresse: form.adresse,
-    region: form.region,
-    ville: form.ville,
-    quartier: form.quartier,
+    ville_id: form.ville_id,
+    latitude: form.latitude,
+    longitude: form.longitude,
   }
 
   loading.value = true

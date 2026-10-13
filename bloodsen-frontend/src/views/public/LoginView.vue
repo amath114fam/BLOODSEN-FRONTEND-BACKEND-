@@ -40,7 +40,7 @@
         <div class="login-top">
 
           <router-link to="/" class="back-home">
-            <span>←</span>
+            <ArrowLeft :size="18" :stroke-width="2" />
             Retour à l'accueil
           </router-link>
 
@@ -226,6 +226,7 @@
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ArrowLeft } from 'lucide-vue-next'
 
 import AppButton from '@/components/AppButton.vue'
 import AppInput from '@/components/AppInput.vue'
@@ -362,11 +363,6 @@ async function handleSubmit() {
   font-weight: 500;
 
   text-decoration: none;
-}
-
-.back-home span {
-  font-size: 18px;
-  line-height: 1;
 }
 
 .back-home:hover {

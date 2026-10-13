@@ -24,7 +24,7 @@ def envoyer_email_confirmation_participation(participation):
         f"Bonjour {donneur.prenom},\n\n"
         f"Nous avons le plaisir de vous informer que votre don de sang "
         f"a été confirmé par « {structure.nom_structure} » "
-        f"({structure.ville}, {structure.region}).\n\n"
+        f"({structure.ville}, {structure.ville.region}).\n\n"
         f"Détails du don :\n"
         f"  - Groupe sanguin : {demande.groupe_sanguin}\n"
         f"  - Structure : {structure.nom_structure}\n"

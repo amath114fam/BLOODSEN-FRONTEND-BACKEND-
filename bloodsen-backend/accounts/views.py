@@ -235,6 +235,7 @@ class MoiView(APIView):
                     "id": profil.ville.id,
                     "nom": profil.ville.nom,
                     "region": profil.ville.region.nom,
+                    "region_id": profil.ville.region.id,
                 } if profil.ville else None,
                 "latitude": profil.latitude,
                 "longitude": profil.longitude,
@@ -265,6 +266,7 @@ class MoiView(APIView):
                     "id": profil.ville.id,
                     "nom": profil.ville.nom,
                     "region": profil.ville.region.nom,
+                    "region_id": profil.ville.region.id,
                 } if profil.ville else None,
                 "latitude": profil.latitude,
                 "longitude": profil.longitude,
@@ -306,9 +308,14 @@ class MoiView(APIView):
                         "prenom": profil.prenom,
                         "telephone": profil.telephone,
                         "groupe_sanguin": profil.groupe_sanguin,
-                        "region": profil.region,
-                        "ville": profil.ville,
-                        "quartier": profil.quartier,
+                        "ville": {
+                            "id": profil.ville.id,
+                            "nom": profil.ville.nom,
+                            "region": profil.ville.region.nom,
+                            "region_id": profil.ville.region.id,
+                        } if profil.ville else None,
+                        "latitude": profil.latitude,
+                        "longitude": profil.longitude,
                         "disponible": profil.disponible,
                     },
                 },
@@ -335,15 +342,18 @@ class MoiView(APIView):
                     "profil": {
                         "nom_structure": profil.nom_structure,
                         "adresse": profil.adresse,
-                        "region": profil.region,
-                        "ville": profil.ville,
-                        "quartier": profil.quartier,
+                        "ville": {
+                            "id": profil.ville.id,
+                            "nom": profil.ville.nom,
+                            "region": profil.ville.region.nom,
+                            "region_id": profil.ville.region.id,
+                        } if profil.ville else None,
+                        "latitude": profil.latitude,
+                        "longitude": profil.longitude,
                     },
                 },
                 status=status.HTTP_200_OK,
             )
-
-        # ==========================================
         # CAS NON SUPPORTÉ (admin)
         # ==========================================
         return Response(

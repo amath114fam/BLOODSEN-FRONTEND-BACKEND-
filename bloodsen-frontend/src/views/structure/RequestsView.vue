@@ -19,6 +19,16 @@
       </AppButton>
     </div>
 
+        <!-- Bandeaux de succès -->
+    <div v-if="afficherMessageCreation" class="success-banner">
+      <CheckCircle :size="20" :stroke-width="2.5" />
+      <span>Votre demande a été créée avec succès. Les donneurs compatibles ont été sollicités.</span>
+    </div>
+
+    <div v-if="afficherMessageAnnulation" class="success-banner">
+      <CheckCircle :size="20" :stroke-width="2.5" />
+      <span>La demande a été annulée.</span>
+    </div>
     <!-- ==========================================
          STATS
     =========================================== -->
@@ -300,8 +310,9 @@
 
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useDemandesStore } from '@/stores/demandes'
-import { AlertTriangle } from 'lucide-vue-next'
+import { AlertTriangle, CheckCircle } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
@@ -311,6 +322,26 @@ import AppButton from '@/components/AppButton.vue'
 import StatCard from '@/components/StatCard.vue'
 
 const demandesStore = useDemandesStore()
+const route = useRoute()
+const router = useRouter()
+
+// ==========================================
+// MESSAGES DE SUCCÈS
+// ==========================================
+
+// Récupère les paramètres ?created=1 ou ?cancelled=1
+const afficherMessageCreation = ref(route.query.created === '1')
+const afficherMessageAnnulation = ref(route.query.cancelled === '1')
+
+onMounted(() => {
+  if (afficherMessageCreation.value || afficherMessageAnnulation.value) {
+    setTimeout(() => {
+      afficherMessageCreation.value = false
+      afficherMessageAnnulation.value = false
+      router.replace({ query: {} })
+    }, 5000)
+  }
+})
 
 // ==========================================
 // CHARGEMENT INITIAL
@@ -499,8 +530,13 @@ async function confirmerAnnulation() {
   try {
     await demandesStore.annulerDemande(demandeAnnulation.value.id)
     demandeAnnulation.value = null
+    // Afficher le bandeau de succès
+    afficherMessageAnnulation.value = true
+    setTimeout(() => {
+      afficherMessageAnnulation.value = false
+    }, 5000)
   } catch (e) {
-    // Silencieux : le store a déjà l'erreur
+    // Silencieux
   } finally {
     annulationEnCours.value = false
   }
@@ -799,6 +835,33 @@ async function confirmerAnnulation() {
   color: #c5cdd8;
 }
 
+
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 14px 18px;
+
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+
+  color: #059669;
+  font-size: 14px;
+  font-weight: 600;
+
+  animation: slideDown 0.3s ease;
+}
+
+.success-banner :deep(svg) {
+  flex-shrink: 0;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 /* ========================================
    FOOTER + PAGINATION
 ======================================== */

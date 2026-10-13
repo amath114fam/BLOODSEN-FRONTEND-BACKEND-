@@ -271,7 +271,7 @@ class AnnulerDemandeView(APIView):
             )
 
         # 4. Vérifier que la demande est encore "en_cours"
-        if demande.statut != Demande.Statut.EN_COURS:
+        if demande.statut != Demande.StatutDemande.EN_COURS:
             return Response(
                 {"detail": f"Impossible d'annuler : la demande est déjà au statut '{demande.statut}'."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -286,7 +286,7 @@ class AnnulerDemandeView(APIView):
             ).update(statut=Sollicitation.Statut.EXPIREE)
 
             # 5b. Passer la demande à "annulee"
-            demande.statut = Demande.Statut.ANNULEE
+            demande.statut = Demande.StatutDemande.ANNULEE
             demande.save(update_fields=['statut'])
 
         # 6. Renvoyer la demande mise à jour

@@ -9,6 +9,12 @@
       <p>Suivez les participations liées à vos demandes.</p>
     </div>
 
+        <!-- Bandeau de succès -->
+    <div v-if="afficherMessageSucces" class="success-banner">
+      <CheckCircle :size="20" :stroke-width="2.5" />
+      <span>La participation a été confirmée avec succès. 100 points ont été attribués au donneur.</span>
+    </div>
+
     <!-- ==========================================
          STATS
     =========================================== -->
@@ -474,6 +480,9 @@ function statusLabel(status) {
 const confirmation = ref(null)
 const confirmationEnCours = ref(false)
 
+// Bandeau de succès
+const afficherMessageSucces = ref(false)
+
 function confirmParticipation(item) {
   confirmation.value = {
     sollicitationId: item.id,
@@ -495,6 +504,12 @@ async function confirmerAction() {
     await api.post(`/sollicitations/${confirmation.value.sollicitationId}/confirmer/`)
     await chargerParticipations()
     confirmation.value = null
+
+    // Afficher le bandeau de succès
+    afficherMessageSucces.value = true
+    setTimeout(() => {
+      afficherMessageSucces.value = false
+    }, 5000)
   } catch (e) {
     // Silencieux
   } finally {
@@ -561,7 +576,32 @@ async function confirmerAction() {
   color: #6b7280;
   font-size: 14px;
 }
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 
+  padding: 14px 18px;
+
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+
+  color: #059669;
+  font-size: 14px;
+  font-weight: 600;
+
+  animation: slideDown 0.3s ease;
+}
+
+.success-banner :deep(svg) {
+  flex-shrink: 0;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .spinner-large {
   display: inline-block;
   width: 40px;

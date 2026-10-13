@@ -268,8 +268,8 @@ async function handleSubmit() {
   loading.value = true
   try {
     await demandesStore.creerDemande(donnees)
-    // Succès → redirection vers la liste des demandes
-    router.push('/structure/demandes')
+    // Succès → redirection avec paramètre
+    router.push('/structure/demandes?created=1')
   } catch (error) {
     if (error.response?.status === 400) {
       erreursBackend.value = error.response.data

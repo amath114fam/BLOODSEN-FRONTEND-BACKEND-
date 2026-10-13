@@ -42,7 +42,6 @@
 
     </div>
 
-    <div class="content-grid">
 
       <!-- Liste des participations -->
       <AppCard padding="0" class="participations-card">
@@ -128,7 +127,6 @@
 
       <GamificationCard :profil="profil" />
 
-    </div>
 
   </div>
 </template>
@@ -315,16 +313,7 @@ function statusLabel(status) {
   gap: 20px;
 }
 
-/* ========================================
-   GRILLE PRINCIPALE
-======================================== */
 
-.content-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
 
 /* ========================================
    CARTE PARTICIPATIONS
@@ -449,13 +438,6 @@ function statusLabel(status) {
 /* ========================================
    RESPONSIVE
 ======================================== */
-
-/* Écrans moyens : 1 colonne */
-@media (max-width: 1200px) {
-  .content-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* Tablette : stats en 2 colonnes */
 @media (max-width: 900px) {

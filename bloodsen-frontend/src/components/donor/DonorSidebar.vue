@@ -13,7 +13,7 @@
       <router-link
         to="/donneur/tableau-de-bord"
         class="nav-item"
-        active-class="active"
+        :class="{ active: isDashboardActive }"
       >
         <span class="nav-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -29,7 +29,7 @@
       <router-link
         to="/donneur/sollicitations"
         class="nav-item"
-        active-class="active"
+        :class="{ active: isSollicitationsActive }"
       >
         <span class="nav-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -43,7 +43,7 @@
       <router-link
         to="/donneur/participations"
         class="nav-item"
-        active-class="active"
+        :class="{ active: isParticipationsActive }"
       >
         <span class="nav-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -61,7 +61,7 @@
       <router-link
         to="/donneur/profil"
         class="nav-item"
-        active-class="active"
+        :class="{ active: isProfilActive }"
       >
         <span class="nav-icon">
           <Settings :size="19" :stroke-width="2" />
@@ -89,7 +89,8 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { Settings } from 'lucide-vue-next'
 
@@ -101,7 +102,21 @@ defineProps({
 })
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
+
+// ==========================================
+// DÉTECTION DE LA SECTION ACTIVE
+// ==========================================
+
+function isSectionActive(basePath) {
+  return route.path === basePath || route.path.startsWith(`${basePath}/`)
+}
+
+const isDashboardActive = computed(() => isSectionActive('/donneur/tableau-de-bord'))
+const isSollicitationsActive = computed(() => isSectionActive('/donneur/sollicitations'))
+const isParticipationsActive = computed(() => isSectionActive('/donneur/participations'))
+const isProfilActive = computed(() => isSectionActive('/donneur/profil'))
 
 function handleLogout() {
   // 1. Supprime les tokens et vide l'utilisateur du store

@@ -6,6 +6,11 @@
       <p>Gérez vos informations de donneur.</p>
     </div>
 
+    <div v-if="afficherMessageSucces" class="success-banner">
+      <CheckCircle :size="20" :stroke-width="2.5" class="success-icon" />
+      <span>Votre profil a été mis à jour avec succès.</span>
+    </div>
+
     <div class="profile-actions">
       <AppButton variant="primary" to="/donneur/profil/modifier">
         Modifier mon profil
@@ -159,12 +164,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import {
   Settings, User, Heart, MapPin,
   Trophy, Award, Sparkles,
   Droplet, Star, Zap, Calendar, Check, Gem, Crown,
+  CheckCircle,
 } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
@@ -172,6 +179,23 @@ import AppBadge from '@/components/AppBadge.vue'
 import AppButton from '@/components/AppButton.vue'
 
 const auth = useAuthStore()
+const route = useRoute()
+const router = useRouter()
+
+// ==========================================
+// BANDEAU DE SUCCÈS
+// ==========================================
+
+const afficherMessageSucces = ref(route.query.updated === '1')
+
+onMounted(() => {
+  if (afficherMessageSucces.value) {
+    setTimeout(() => {
+      afficherMessageSucces.value = false
+      router.replace({ query: {} })
+    }, 5000)
+  }
+})
 
 // ==========================================
 // CHARGEMENT DU PROFIL
@@ -467,6 +491,33 @@ const account = computed(() => ({
   justify-content: flex-end;
 }
 
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 14px 18px;
+
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+
+  color: #059669;
+  font-size: 14px;
+  font-weight: 600;
+
+  animation: slideDown 0.3s ease;
+}
+
+.success-icon {
+  flex-shrink: 0;
+  color: #059669;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 /* ========================================
    RESPONSIVE
 ======================================== */

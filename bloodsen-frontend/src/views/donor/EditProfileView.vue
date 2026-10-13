@@ -62,24 +62,14 @@
               </div>
             </div>
 
-            <AppSelect
-              id="region"
-              v-model="form.region"
-              label="Région"
-              placeholder="Sélectionnez une région"
-              :options="regionsOptions"
-            />
-
-            <AppInput
-              id="district"
-              v-model="form.district"
-              label="Quartier"
-            />
-
-            <AppInput
-              id="city"
-              v-model="form.city"
-              label="Ville"
+            <!-- Localisation (Région + Ville + GPS) -->
+            <LocationSelector
+              :region-error="erreursBackend.region?.[0] || ''"
+              :ville-error="erreursBackend.ville_id?.[0] || ''"
+              :initial-region-id="auth.user?.profil?.ville?.region_id"
+              :initial-ville-id="auth.user?.profil?.ville?.id"
+              @update:ville="form.ville_id = $event"
+              @update:coords="onCoords"
             />
 
           </AppCard>
@@ -160,19 +150,19 @@
 
             <div class="card-divider"></div>
 
-              <div class="metrics-grid">
+            <div class="metrics-grid">
 
-                <div class="metric-box">
-                  <span class="metric-label">Groupe sanguin</span>
-                  <strong class="metric-value">{{ groupeSanguin }}</strong>
-                </div>
-
-                <div class="metric-box">
-                  <span class="metric-label">Points d'engagement</span>
-                  <strong class="metric-value highlight">{{ pointsEngagement }} pts</strong>
-                </div>
-
+              <div class="metric-box">
+                <span class="metric-label">Groupe sanguin</span>
+                <strong class="metric-value">{{ groupeSanguin }}</strong>
               </div>
+
+              <div class="metric-box">
+                <span class="metric-label">Points d'engagement</span>
+                <strong class="metric-value highlight">{{ pointsEngagement }} pts</strong>
+              </div>
+
+            </div>
 
           </AppCard>
 
@@ -193,14 +183,14 @@
 
             <div class="card-divider"></div>
 
-              <AppInput
-                id="email"
-                :model-value="emailUtilisateur"
-                type="email"
-                label="Adresse email"
-                disabled
-                hint="L'email ne peut pas être modifié."
-              />
+            <AppInput
+              id="email"
+              :model-value="emailUtilisateur"
+              type="email"
+              label="Adresse email"
+              disabled
+              hint="L'email ne peut pas être modifié."
+            />
 
           </AppCard>
 
@@ -242,7 +232,6 @@
               placeholder="Répéter le nouveau mot de passe"
             />
 
-            <!-- Messages d'erreur / succès -->
             <div v-if="passwordErreur" class="password-message error">
               <AlertCircle :size="18" :stroke-width="2" />
               <span>{{ passwordErreur }}</span>
@@ -288,8 +277,15 @@
         <AppButton
           type="submit"
           variant="primary"
+          :disabled="loading"
         >
-          Enregistrer les modifications
+          <template v-if="loading">
+            <span class="spinner-small"></span>
+            Enregistrement...
+          </template>
+          <template v-else>
+            Enregistrer les modifications
+          </template>
         </AppButton>
 
       </div>
@@ -308,9 +304,8 @@ import { CheckCircle, AlertCircle } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
 import AppInput from '@/components/AppInput.vue'
-import AppSelect from '@/components/AppSelect.vue'
 import AppButton from '@/components/AppButton.vue'
-import { REGIONS_SENEGAL } from '@/constants/regions'
+import LocationSelector from '@/components/LocationSelector.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -330,19 +325,27 @@ const erreursBackend = ref({})
 const form = reactive({
   lastName: '',
   firstName: '',
-  phoneNumber: '',   // partie locale du numéro (sans +221)
-  region: '',
-  district: '',
-  city: '',
+  phoneNumber: '',
+  ville_id: null,
+  latitude: null,
+  longitude: null,
   availability: 'available',
 })
+
+// ==========================================
+// GÉOLOCALISATION
+// ==========================================
+
+function onCoords({ latitude, longitude }) {
+  form.latitude = latitude
+  form.longitude = longitude
+}
 
 // ==========================================
 // PRÉ-REMPLISSAGE
 // ==========================================
 
 onMounted(async () => {
-  // S'assurer que le profil est chargé
   if (!auth.user) {
     try {
       await auth.fetchMe()
@@ -355,9 +358,9 @@ onMounted(async () => {
 
   form.lastName = profil.nom || ''
   form.firstName = profil.prenom || ''
-  form.region = profil.region || ''
-  form.city = profil.ville || ''
-  form.district = profil.quartier || ''
+  form.ville_id = profil.ville?.id || null
+  form.latitude = profil.latitude || null
+  form.longitude = profil.longitude || null
   form.availability = profil.disponible ? 'available' : 'unavailable'
 
   // Extraire la partie locale du téléphone (sans +221)
@@ -372,10 +375,6 @@ onMounted(async () => {
 
 const emailUtilisateur = computed(() => auth.user?.email || '—')
 
-const regionsOptions = computed(() =>
-  REGIONS_SENEGAL.map(r => ({ value: r, label: r }))
-)
-
 const groupeSanguin = computed(() => auth.user?.profil?.groupe_sanguin || '—')
 
 const pointsEngagement = computed(() => auth.user?.profil?.points_total || 0)
@@ -388,27 +387,21 @@ async function handleSubmit() {
   erreurGlobale.value = ''
   erreursBackend.value = {}
 
-  // Construire les données à envoyer
-  // On envoie seulement les champs modifiés (PATCH)
   const donnees = {
     nom: form.lastName,
     prenom: form.firstName,
     telephone: form.phoneNumber,
-    region: form.region,
-    ville: form.city,
-    quartier: form.district,
+    ville_id: form.ville_id,
+    latitude: form.latitude,
+    longitude: form.longitude,
     disponible: form.availability === 'available',
   }
 
   loading.value = true
   try {
     await api.patch('/auth/moi/', donnees)
-
-    // Recharger le profil dans le store pour refléter les changements
     await auth.fetchMe()
-
-    // Rediriger vers la page de profil
-    router.push('/donneur/profil')
+    router.push('/donneur/profil?updated=1')
   } catch (error) {
     if (error.response?.status === 400) {
       erreursBackend.value = error.response.data
@@ -428,7 +421,6 @@ const passwordLoading = ref(false)
 const passwordErreur = ref('')
 const passwordSucces = ref('')
 
-// État local pour les 3 champs du formulaire de mot de passe
 const passwordForm = reactive({
   actuel: '',
   nouveau: '',
@@ -439,7 +431,6 @@ async function updatePassword() {
   passwordErreur.value = ''
   passwordSucces.value = ''
 
-  // Vérifications côté frontend
   if (!passwordForm.actuel || !passwordForm.nouveau || !passwordForm.confirmation) {
     passwordErreur.value = 'Tous les champs sont obligatoires.'
     return
@@ -464,12 +455,10 @@ async function updatePassword() {
 
     passwordSucces.value = 'Mot de passe mis à jour avec succès.'
 
-    // Vider les champs
     passwordForm.actuel = ''
     passwordForm.nouveau = ''
     passwordForm.confirmation = ''
 
-    // Faire disparaître le message après 5 secondes
     setTimeout(() => {
       passwordSucces.value = ''
     }, 5000)
@@ -501,18 +490,14 @@ async function updatePassword() {
 
 .page-heading h2 {
   margin: 0 0 6px;
-
   color: var(--bloodsen-dark);
-
   font-size: 30px;
   font-weight: 700;
 }
 
 .page-heading p {
   margin: 0;
-
   color: #6b7280;
-
   font-size: 14px;
 }
 
@@ -560,7 +545,6 @@ async function updatePassword() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-
   color: var(--bloodsen-red);
 }
 
@@ -571,9 +555,7 @@ async function updatePassword() {
 
 .card-header h3 {
   margin: 0;
-
   color: var(--bloodsen-dark);
-
   font-size: 16px;
   font-weight: 700;
 }
@@ -581,7 +563,6 @@ async function updatePassword() {
 .card-divider {
   height: 1px;
   margin-top: -6px;
-
   background-color: #eef0f2;
 }
 
@@ -606,7 +587,6 @@ async function updatePassword() {
 
 .field-label {
   color: var(--bloodsen-dark);
-
   font-size: 13px;
   font-weight: 500;
 }
@@ -634,18 +614,13 @@ async function updatePassword() {
 
 .availability-option {
   position: relative;
-
   display: flex;
   align-items: flex-start;
   gap: 10px;
-
   padding: 16px;
-
   border: 1px solid #e1e4e8;
   border-radius: 10px;
-
   cursor: pointer;
-
   transition: border-color 0.15s ease;
 }
 
@@ -657,9 +632,7 @@ async function updatePassword() {
 
 .availability-option input {
   margin-top: 3px;
-
   accent-color: var(--bloodsen-red);
-
   cursor: pointer;
 }
 
@@ -667,9 +640,7 @@ async function updatePassword() {
   display: flex;
   align-items: center;
   gap: 6px;
-
   color: var(--bloodsen-dark);
-
   font-size: 14px;
   font-weight: 700;
 }
@@ -686,9 +657,7 @@ async function updatePassword() {
 
 .availability-content p {
   margin: 4px 0 0;
-
   color: #8a94a3;
-
   font-size: 12.5px;
   line-height: 1.4;
 }
@@ -707,9 +676,7 @@ async function updatePassword() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-
   padding: 16px;
-
   border: 1px solid #eef0f2;
   border-radius: 10px;
 }
@@ -721,7 +688,6 @@ async function updatePassword() {
 
 .metric-value {
   color: var(--bloodsen-dark);
-
   font-size: 20px;
   font-weight: 700;
 }
@@ -751,11 +717,9 @@ async function updatePassword() {
 .form-error {
   padding: 12px 16px;
   margin-bottom: 16px;
-
   background-color: #fde8e8;
   border: 1px solid #f5c2c7;
   border-radius: 6px;
-
   color: #b42318;
   font-size: 14px;
 }
@@ -764,11 +728,8 @@ async function updatePassword() {
   display: flex;
   align-items: center;
   gap: 10px;
-
   padding: 10px 14px;
-
   border-radius: 6px;
-
   font-size: 13px;
   line-height: 1.4;
 }
@@ -789,17 +750,16 @@ async function updatePassword() {
   display: inline-block;
   width: 14px;
   height: 14px;
-
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-top-color: currentColor;
   border-radius: 50%;
-
   animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
 /* ========================================
    RESPONSIVE
 ======================================== */
@@ -811,34 +771,12 @@ async function updatePassword() {
 }
 
 @media (max-width: 700px) {
-
-  .page-heading h2 {
-    font-size: 24px;
-  }
-
-  .edit-card {
-    padding: 20px !important;
-  }
-
-  .field-row.two-cols {
-    grid-template-columns: 1fr;
-  }
-
-  .availability-options {
-    grid-template-columns: 1fr;
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .form-actions {
-    flex-direction: column-reverse;
-  }
-
-  .form-actions :deep(.app-button) {
-    width: 100%;
-  }
-
+  .page-heading h2 { font-size: 24px; }
+  .edit-card { padding: 20px !important; }
+  .field-row.two-cols { grid-template-columns: 1fr; }
+  .availability-options { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: 1fr; }
+  .form-actions { flex-direction: column-reverse; }
+  .form-actions :deep(.app-button) { width: 100%; }
 }
 </style>

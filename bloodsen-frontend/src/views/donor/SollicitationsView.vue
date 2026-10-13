@@ -6,6 +6,21 @@
       <p>Les demandes de sang correspondant à votre profil.</p>
     </div>
 
+
+        <!-- Bandeaux de succès -->
+    <div v-if="afficherMessageSucces === 'accepted'" class="success-banner">
+      <CheckCircle :size="20" :stroke-width="2.5" />
+      <span>
+        Sollicitation acceptée. Présentez-vous au centre de collecte.
+        La structure confirmera votre don.
+      </span>
+    </div>
+
+    <div v-if="afficherMessageSucces === 'declined'" class="success-banner info">
+      <CheckCircle :size="20" :stroke-width="2.5" />
+      <span>Sollicitation refusée. Vous ne recevrez plus de rappels pour cette demande.</span>
+    </div>
+
     <AppTabs
       v-model="activeTab"
       :tabs="tabs"
@@ -131,7 +146,7 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import { useSollicitationsStore } from '@/stores/sollicitations'
-import { Check, X, Droplet } from 'lucide-vue-next'
+import { Check, X, Droplet, CheckCircle } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
 import AppButton from '@/components/AppButton.vue'
@@ -146,6 +161,9 @@ const sollicitationsStore = useSollicitationsStore()
 const activeTab = ref('pending')
 const confirmation = ref(null)
 const confirmationEnCours = ref(false)
+
+// Bandeau de succès
+const afficherMessageSucces = ref('')  // 'accepted', 'declined' ou ''
 
 // ==========================================
 // CHARGEMENT INITIAL
@@ -252,10 +270,17 @@ async function confirmerAction() {
   try {
     if (confirmation.value.type === 'accepter') {
       await sollicitationsStore.accepter(confirmation.value.sollicitationId)
+      afficherMessageSucces.value = 'accepted'
     } else {
       await sollicitationsStore.refuser(confirmation.value.sollicitationId)
+      afficherMessageSucces.value = 'declined'
     }
     confirmation.value = null
+
+    // Masquer après 5 secondes
+    setTimeout(() => {
+      afficherMessageSucces.value = ''
+    }, 5000)
   } catch (e) {
     // Silencieux
   } finally {
@@ -431,6 +456,40 @@ async function confirmerAction() {
 
   font-size: 14px;
   line-height: 1.6;
+}
+
+
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 14px 18px;
+
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+
+  color: #059669;
+  font-size: 14px;
+  font-weight: 600;
+
+  animation: slideDown 0.3s ease;
+}
+
+.success-banner.info {
+  background-color: #f1f3f5;
+  border-color: #e1e4e8;
+  color: #4a5568;
+}
+
+.success-banner :deep(svg) {
+  flex-shrink: 0;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ========================================

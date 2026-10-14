@@ -83,7 +83,6 @@ class ProfilDonneur(models.Model):
     )
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
-    date_dernier_don = models.DateTimeField(null=True, blank=True)
 
     # Indique si le donneur peut recevoir des sollicitations en ce moment
     disponible = models.BooleanField(default=True)

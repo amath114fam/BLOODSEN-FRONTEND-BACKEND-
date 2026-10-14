@@ -8,12 +8,6 @@ from .models import Sollicitation
 from .utils import envoyer_email_sollicitation
 
 
-# Nombre maximum de donneurs sollicités par demande
-MAX_DONNEURS_PAR_DEMANDE = 50
-
-# Délai minimum entre deux dons (en jours)
-DELAI_MIN_ENTRE_DONS = 90
-
 
 def calculer_distance_km(lat1, lon1, lat2, lon2):
     """
@@ -53,8 +47,13 @@ def _coordonnees_demande(demande):
 # CONSTANTES
 # =====================================================
 
-MAX_DONNEURS_PAR_DEMANDE = 20
-DELAI_MIN_ENTRE_DONS = 7
+# Nombre maximum de donneurs sollicités par demande
+MAX_DONNEURS_PAR_DEMANDE = 50
+
+# Délai médical minimum entre deux dons (règle CNTS : 90 jours)
+DELAI_MIN_ENTRE_DONS = 90
+
+# Rayon maximum pour le matching GPS (en km)
 RAYON_MAX_KM = 50
 
 

@@ -66,7 +66,7 @@
             <span class="dot"></span>
           </span>
           <template v-else>
-            {{ msg.contenu }}
+            <span v-html="formaterMessage(msg.contenu)"></span>
           </template>
         </div>
         <div v-if="msg.sources && msg.sources.length" class="message-sources">
@@ -192,6 +192,32 @@ function scrollEnBas() {
   })
 }
 
+
+// ==========================================
+// FORMATAGE DES MESSAGES
+// ==========================================
+// Détecte les URLs dans le texte et les transforme en liens cliquables.
+
+function formaterMessage(texte) {
+  if (!texte) return ''
+
+  // 1. Échapper le HTML (sécurité contre XSS)
+  const texteEchappe = texte
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
+  // 2. Détecter les URLs (http, https)
+  const regexUrl = /(https?:\/\/[^\s<]+)/g
+
+  // 3. Remplacer chaque URL par un lien cliquable
+  return texteEchappe.replace(
+    regexUrl,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" class="chat-link">$1</a>'
+  )
+}
 // ==========================================
 // SCROLL QUAND LE CHAT S'OUVRE
 // ==========================================
@@ -397,6 +423,17 @@ watch(estOuvert, (valeur) => {
   color: #1a1a1a;
   border: 1px solid #e6eaf0;
   border-bottom-left-radius: 4px;
+}
+
+.message-bubble :deep(.chat-link) {
+  color: var(--bloodsen-red);
+  font-weight: 600;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.message-bubble :deep(.chat-link:hover) {
+  opacity: 0.85;
 }
 
 .message.user .message-bubble {

@@ -8,7 +8,21 @@ import re
 
 from .models import Document, DocumentChunk
 
+def normaliser_question(question):
+    """
+    Normalise la question utilisateur :
+    - Remplace les '0' par 'O' dans les groupes sanguins (0+ → O+, 0- → O-)
+      car beaucoup d'utilisateurs utilisent le chiffre zéro.
 
+    Cela permet au RAG de trouver les bons chunks même si
+    l'utilisateur a utilisé le mauvais caractère.
+    """
+    # Remplacer 0+ par O+, 0- par O-, AB0 par ABO
+    # On utilise une regex qui cible uniquement les groupes sanguins
+    question = re.sub(r'\b0(\+|\-)\b', r'O\1', question)
+    question = re.sub(r'\b0\b(?!\+|\-)', 'O', question)
+
+    return question
 # =====================================================
 # 1. Extraction du texte depuis un PDF
 # =====================================================
@@ -311,6 +325,20 @@ def repondre_question(question):
             "trouve": bool,   # False si rien de pertinent n'a été trouvé
         }
     """
+      # 0a. Normaliser la question (0+ → O+, etc.)
+    question = normaliser_question(question)
+
+    # 0. Détection d'intention (avant le RAG)
+    from .intentions import detecter_intention
+    intention, reponse_directe = detecter_intention(question)
+
+    if intention:
+        return {
+            "reponse": reponse_directe,
+            "sources": [],
+            "trouve": True,
+        }
+
     # 1. Vectoriser la question
     vecteur = vectoriser_question(question)
 

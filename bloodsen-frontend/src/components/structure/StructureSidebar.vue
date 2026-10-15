@@ -98,7 +98,7 @@
       <button
         type="button"
         class="nav-item logout"
-        @click="handleLogout"
+        @click="ouvrirModalLogout"
       >
         <span class="nav-icon">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -111,19 +111,49 @@
       </button>
 
     </div>
-
   </aside>
+
+  <LogoutModal
+    :visible="afficherModalLogout"
+    :chargement="deconnexionEnCours"
+    @annuler="fermerModalLogout"
+    @confirmer="confirmerLogout"
+  />
+  
 </template>
 
 <script setup>
 import { useRouter, useRoute } from 'vue-router'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { Sparkles, Settings } from 'lucide-vue-next'
+import LogoutModal from '@/components/LogoutModal.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+
+// ==========================================
+// MODAL DE DÉCONNEXION
+// ==========================================
+
+const afficherModalLogout = ref(false)
+const deconnexionEnCours = ref(false)
+
+function ouvrirModalLogout() {
+  afficherModalLogout.value = true
+}
+
+function fermerModalLogout() {
+  if (deconnexionEnCours.value) return
+  afficherModalLogout.value = false
+}
+
+function confirmerLogout() {
+  deconnexionEnCours.value = true
+  auth.logout()
+  router.push('/connexion')
+}
 
 // ==========================================
 // DÉTECTION DE LA SECTION ACTIVE
@@ -150,17 +180,6 @@ defineProps({
   },
 })
 
-// ==========================================
-// DÉCONNEXION
-// ==========================================
-
-function handleLogout() {
-  // 1. Supprime les tokens et vide l'utilisateur du store
-  auth.logout()
-
-  // 2. Redirige vers la page de connexion
-  router.push('/connexion')
-}
 </script>
 
 <style scoped>

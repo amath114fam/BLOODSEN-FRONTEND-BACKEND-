@@ -55,7 +55,7 @@
               Tableau de bord
             </router-link>
 
-            <button type="button" class="logout-button" @click="handleLogout">
+            <button type="button" class="logout-button" @click="ouvrirModalLogout">
               <LogOut :size="16" />
               Déconnexion
             </button>
@@ -124,7 +124,7 @@
           <button
             type="button"
             class="mobile-logout"
-            @click="handleLogout"
+            @click="ouvrirModalLogout"
           >
             Déconnexion
           </button>
@@ -228,6 +228,13 @@
 
     <ChatWidget />
 
+    <LogoutModal
+      :visible="afficherModalLogout"
+      :chargement="deconnexionEnCours"
+      @annuler="fermerModalLogout"
+      @confirmer="confirmerLogout"
+    />
+
   </div>
 </template>
 
@@ -237,11 +244,36 @@ import { RouterView, useRouter } from 'vue-router'
 import { X, Menu, LayoutDashboard, LogOut } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import ChatWidget from '@/components/ChatWidget.vue'
+import LogoutModal from '@/components/LogoutModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 
 const isMenuOpen = ref(false)
+
+// ==========================================
+// MODAL DE DÉCONNEXION
+// ==========================================
+
+const afficherModalLogout = ref(false)
+const deconnexionEnCours = ref(false)
+
+function ouvrirModalLogout() {
+  afficherModalLogout.value = true
+  isMenuOpen.value = false
+}
+
+function fermerModalLogout() {
+  if (deconnexionEnCours.value) return
+  afficherModalLogout.value = false
+}
+
+function confirmerLogout() {
+  deconnexionEnCours.value = true
+  auth.logout()
+  isMenuOpen.value = false
+  router.push('/connexion')
+}
 
 // Vrai si l'utilisateur est connecté
 const estConnecte = computed(() => auth.isAuthenticated)
@@ -254,12 +286,6 @@ const lienTableauDeBord = computed(() => {
   return '/'
 })
 
-// Déconnexion
-function handleLogout() {
-  auth.logout()
-  isMenuOpen.value = false
-  router.push('/connexion')
-}
 </script>
 
 <style scoped>

@@ -7,11 +7,14 @@
 
       <header class="donor-topbar">
 
-        <div class="donor-topbar-title">
-          <h2>Tableau de bord</h2>
+        <div class="donor-topbar-left">
+
+          <router-link to="/" class="home-link">
+            <Home :size="18" :stroke-width="2" />
+            <span>Accueil</span>
+          </router-link>
+
         </div>
-
-
         <div class="donor-actions">
 
           <router-link to="/donneur/profil" class="user-block">
@@ -49,6 +52,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { RouterView } from 'vue-router'
+import { Home } from 'lucide-vue-next'
 import DonorSidebar from '@/components/donor/DonorSidebar.vue'
 import DonorBottomNav from '@/components/donor/DonorBottomNav.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -170,13 +174,42 @@ const hasNotifications = computed(() => pendingSollicitationsCount.value > 0)
   flex-shrink: 0;
 }
 
-.donor-topbar-title h2 {
-  margin: 0;
+.donor-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
 
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 14px;
+
+  border: 1px solid #e0e4ea;
+  border-radius: 8px;
+
+  background-color: transparent;
   color: var(--bloodsen-dark);
 
-  font-size: 30px;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+
+  transition: all 0.15s ease;
+}
+
+.home-link:hover {
+  border-color: var(--bloodsen-red);
+  color: var(--bloodsen-red);
+}
+
+.donor-topbar-title h2 {
+  margin: 0;
+  color: var(--bloodsen-dark);
+  font-size: 20px;
+  font-weight: 700;
 }
 
 .donor-actions {
@@ -326,6 +359,13 @@ const hasNotifications = computed(() => pendingSollicitationsCount.value > 0)
   .donor-topbar {
     padding: 16px 20px;
     gap: 12px;
+  }
+  .home-link span {
+    display: none;
+  }
+
+  .home-link {
+    padding: 8px 10px;
   }
 
   .topbar-search {

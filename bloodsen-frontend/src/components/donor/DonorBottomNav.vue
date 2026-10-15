@@ -14,7 +14,7 @@
           <rect x="13" y="13" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="2" />
         </svg>
       </span>
-      <span class="bottom-nav-label">Accueil</span>
+      <span class="bottom-nav-label">T.D.B</span>
     </router-link>
 
     <router-link

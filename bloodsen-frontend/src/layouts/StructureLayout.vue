@@ -24,9 +24,19 @@
         </AppInput>
 
         <!-- Variante par défaut -->
-        <div v-else class="structure-identity">
-          <h1>{{ structureName }}</h1>
-          <p>{{ structureSubtitle }}</p>
+        <!-- Variante par défaut -->
+        <div v-else class="structure-topbar-left">
+
+          <router-link to="/" class="home-link">
+            <Home :size="18" :stroke-width="2" />
+            <span>Accueil</span>
+          </router-link>
+
+          <div class="structure-identity">
+            <h1>{{ structureName }}</h1>
+            <p>{{ structureSubtitle }}</p>
+          </div>
+
         </div>
 
         <div class="structure-actions">
@@ -57,6 +67,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
+import { Home } from 'lucide-vue-next'
 import StructureSidebar from '@/components/structure/StructureSidebar.vue'
 import StructureBottomNav from '@/components/structure/StructureBottomNav.vue'
 import AppInput from '@/components/AppInput.vue'
@@ -196,6 +207,37 @@ const hasNotifications = computed(() => pendingRequestsCount.value > 0)
   border-bottom: 1px solid #e7e9ed;
 
   flex-shrink: 0;
+}
+
+.structure-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 14px;
+
+  border: 1px solid #e0e4ea;
+  border-radius: 8px;
+
+  background-color: transparent;
+  color: var(--bloodsen-dark);
+
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+
+  transition: all 0.15s ease;
+}
+
+.home-link:hover {
+  border-color: var(--bloodsen-red);
+  color: var(--bloodsen-red);
 }
 
 .structure-identity h1 {
@@ -361,6 +403,18 @@ const hasNotifications = computed(() => pendingRequestsCount.value > 0)
     gap: 10px;
   }
 
+    .home-link span {
+    display: none;
+  }
+
+  .home-link {
+    padding: 8px 10px;
+  }
+
+  .structure-topbar-left {
+    gap: 12px;
+  }
+  
   .structure-identity h1 {
     font-size: 16px;
   }

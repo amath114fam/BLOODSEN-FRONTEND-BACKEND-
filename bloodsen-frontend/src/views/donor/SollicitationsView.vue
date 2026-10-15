@@ -43,6 +43,12 @@
 
         <div class="request-body">
           <h3>{{ request.facility }}</h3>
+
+          <p v-if="request.distance !== null && request.distance !== undefined" class="request-distance">
+            <MapPin :size="14" :stroke-width="2" />
+            À {{ request.distance.toFixed(1) }} km de vous
+          </p>
+
           <p>« {{ request.message }} »</p>
         </div>
 
@@ -146,7 +152,7 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import { useSollicitationsStore } from '@/stores/sollicitations'
-import { Check, X, Droplet, CheckCircle } from 'lucide-vue-next'
+import { Check, X, Droplet, CheckCircle, MapPin } from 'lucide-vue-next'
 
 import AppCard from '@/components/AppCard.vue'
 import AppButton from '@/components/AppButton.vue'
@@ -199,6 +205,7 @@ const requests = computed(() => {
     message: s.message || '',
     status: STATUT_API_VERS_UI[s.statut] || 'pending',
     date: s.date_creation,
+    distance: s.distance_km,
   }))
 })
 
@@ -388,6 +395,19 @@ async function confirmerAction() {
   font-size: 14px;
   font-style: italic;
   line-height: 1.6;
+}
+
+.request-distance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  margin: 0 0 8px !important;
+
+  color: var(--bloodsen-red) !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  font-style: normal !important;
 }
 
 /* Actions */

@@ -193,6 +193,7 @@ class SollicitationSerializer(serializers.ModelSerializer):
             'statut',
             'date_creation',
             'date_reponse',
+            'distance_km',
         ]
 
     def get_structure_nom(self, obj):

@@ -1,117 +1,196 @@
 <template>
-  <nav class="public-bottom-nav">
+  <nav class="bottom-nav">
 
     <!-- Accueil -->
     <router-link
       to="/"
-      class="nav-item"
+      class="bottom-nav-item"
       :class="{ active: route.path === '/' }"
       aria-label="Accueil"
       @click="fermer"
     >
-      <Home :size="24" :stroke-width="2" />
+      <span class="bottom-nav-icon">
+        <Home :size="22" :stroke-width="2" />
+      </span>
+      <span class="bottom-nav-label">Accueil</span>
     </router-link>
 
     <!-- Menu -->
     <button
       type="button"
-      class="nav-item"
+      class="bottom-nav-item"
       :class="{ active: menuOuvert }"
       aria-label="Menu"
       @click="toggleMenu"
     >
-      <!-- Icône custom : 3 points + 3 lignes -->
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        class="custom-menu-icon"
-      >
-        <circle cx="3.5" cy="6" r="1.8" fill="currentColor" />
-        <rect x="8" y="5" width="14" height="2" rx="1" fill="currentColor" />
-
-        <circle cx="3.5" cy="12" r="1.8" fill="currentColor" />
-        <rect x="8" y="11" width="14" height="2" rx="1" fill="currentColor" />
-
-        <circle cx="3.5" cy="18" r="1.8" fill="currentColor" />
-        <rect x="8" y="17" width="14" height="2" rx="1" fill="currentColor" />
-      </svg>
+      <span class="bottom-nav-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="3.5" cy="6" r="1.8" fill="currentColor" />
+          <rect x="8" y="5" width="14" height="2" rx="1" fill="currentColor" />
+          <circle cx="3.5" cy="12" r="1.8" fill="currentColor" />
+          <rect x="8" y="11" width="14" height="2" rx="1" fill="currentColor" />
+          <circle cx="3.5" cy="18" r="1.8" fill="currentColor" />
+          <rect x="8" y="17" width="14" height="2" rx="1" fill="currentColor" />
+        </svg>
+      </span>
+      <span class="bottom-nav-label">Menu</span>
     </button>
 
-    <!-- Connexion -->
+    <!-- Si NON connecté : Connexion -->
     <router-link
+      v-if="!estConnecte"
       to="/connexion"
-      class="nav-item"
+      class="bottom-nav-item"
       :class="{ active: route.path === '/connexion' }"
       aria-label="Connexion"
       @click="fermer"
     >
-      <LogIn :size="24" :stroke-width="2" />
+      <span class="bottom-nav-icon">
+        <LogIn :size="22" :stroke-width="2" />
+      </span>
+      <span class="bottom-nav-label">Connexion</span>
     </router-link>
 
-    <!-- Créer un compte -->
+    <!-- Si NON connecté : Créer un compte -->
     <router-link
+      v-if="!estConnecte"
       to="/inscription"
-      class="nav-item nav-item-accent"
+      class="bottom-nav-item"
       :class="{ active: route.path === '/inscription' }"
       aria-label="Créer un compte"
       @click="fermer"
     >
-      <UserPlus :size="24" :stroke-width="2" />
+      <span class="bottom-nav-icon">
+        <UserPlus :size="22" :stroke-width="2" />
+      </span>
+      <span class="bottom-nav-label">Compte</span>
     </router-link>
+
+    <!-- Si connecté : Tableau de bord -->
+    <router-link
+      v-if="estConnecte"
+      :to="lienTableauDeBord"
+      class="bottom-nav-item"
+      aria-label="Tableau de bord"
+      @click="fermer"
+    >
+      <span class="bottom-nav-icon">
+        <LayoutDashboard :size="22" :stroke-width="2" />
+      </span>
+      <span class="bottom-nav-label">Tableau</span>
+    </router-link>
+
+    <!-- Si connecté : Déconnexion -->
+    <button
+      v-if="estConnecte"
+      type="button"
+      class="bottom-nav-item"
+      aria-label="Déconnexion"
+      @click="ouvrirLogout"
+    >
+      <span class="bottom-nav-icon">
+        <LogOut :size="22" :stroke-width="2" />
+      </span>
+      <span class="bottom-nav-label">Déconnexion</span>
+    </button>
 
   </nav>
 
-  <!-- Panneau qui descend quand on clique sur Menu -->
+  <!-- Panneau Menu -->
   <transition name="slide-up">
     <div v-if="menuOuvert" class="menu-panel">
-
       <div class="menu-header">
         <h3>Menu</h3>
         <button type="button" class="menu-close" @click="fermer">
           <X :size="20" :stroke-width="2" />
         </button>
       </div>
-
       <nav class="menu-links">
         <router-link to="/demande-urgente" class="menu-link urgent" @click="fermer">
           <AlertCircle :size="18" :stroke-width="2" />
           Demande urgente
         </router-link>
-
         <a href="/#comment-ca-marche" class="menu-link" @click="fermer">
           <Info :size="18" :stroke-width="2" />
           Comment ça marche
         </a>
-
         <a href="/#pourquoi-donner" class="menu-link" @click="fermer">
           <Heart :size="18" :stroke-width="2" />
           Pourquoi donner
         </a>
-
         <a href="/#contact" class="menu-link" @click="fermer">
           <Mail :size="18" :stroke-width="2" />
           Contact
         </a>
       </nav>
-
     </div>
   </transition>
+
+  <!-- Modal déconnexion -->
+  <LogoutModal
+    :visible="afficherModalLogout"
+    :chargement="deconnexionEnCours"
+    @annuler="fermerModalLogout"
+    @confirmer="confirmerLogout"
+  />
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import {
-  Home, LogIn, UserPlus,
+  Home, LogIn, UserPlus, LogOut, LayoutDashboard,
   X, AlertCircle, Info, Heart, Mail,
 } from 'lucide-vue-next'
+import LogoutModal from '@/components/LogoutModal.vue'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 
 const menuOuvert = ref(false)
+
+// ==========================================
+// UTILISATEUR CONNECTÉ
+// ==========================================
+
+const estConnecte = computed(() => auth.isAuthenticated)
+
+const lienTableauDeBord = computed(() => {
+  if (auth.user?.role === 'structure') return '/structure/tableau-de-bord'
+  if (auth.user?.role === 'donneur') return '/donneur/tableau-de-bord'
+  return '/'
+})
+
+// ==========================================
+// MODAL DÉCONNEXION
+// ==========================================
+
+const afficherModalLogout = ref(false)
+const deconnexionEnCours = ref(false)
+
+function ouvrirLogout() {
+  afficherModalLogout.value = true
+  menuOuvert.value = false
+}
+
+function fermerModalLogout() {
+  if (deconnexionEnCours.value) return
+  afficherModalLogout.value = false
+}
+
+function confirmerLogout() {
+  deconnexionEnCours.value = true
+  auth.logout()
+  afficherModalLogout.value = false
+  menuOuvert.value = false
+  router.push('/connexion')
+}
+
+// ==========================================
+// MENU
+// ==========================================
 
 function toggleMenu() {
   menuOuvert.value = !menuOuvert.value
@@ -124,10 +203,10 @@ function fermer() {
 
 <style scoped>
 /* ========================================
-   BOTTOM NAV
+   BOTTOM NAV (identique aux dashboards)
 ======================================== */
 
-.public-bottom-nav {
+.bottom-nav {
   position: fixed;
   right: 0;
   bottom: 0;
@@ -141,7 +220,7 @@ function fermer() {
   height: 64px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 
@@ -150,10 +229,14 @@ function fermer() {
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
 }
 
-.nav-item {
+.bottom-nav-item {
+  position: relative;
+
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
 
   flex: 1;
   height: 100%;
@@ -162,6 +245,7 @@ function fermer() {
   background: transparent;
 
   color: #8a94a3;
+  font-family: inherit;
   text-decoration: none;
 
   cursor: pointer;
@@ -169,20 +253,30 @@ function fermer() {
   transition: color 0.15s ease;
 }
 
-.nav-item.active {
+.bottom-nav-item.active {
   color: var(--bloodsen-red);
 }
 
-.nav-item-accent {
-  color: var(--bloodsen-red);
+.bottom-nav-icon {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.custom-menu-icon {
-  display: block;
+.bottom-nav-icon :deep(svg) {
+  width: 22px;
+  height: 22px;
+}
+
+.bottom-nav-label {
+  font-size: 10.5px;
+  font-weight: 600;
 }
 
 /* ========================================
-   PANNEAU MENU (glisse vers le haut)
+   PANNEAU MENU
 ======================================== */
 
 .menu-panel {
@@ -240,7 +334,6 @@ function fermer() {
 .menu-links {
   display: flex;
   flex-direction: column;
-
   padding: 8px 0;
 }
 
@@ -288,7 +381,7 @@ function fermer() {
 ======================================== */
 
 @media (min-width: 769px) {
-  .public-bottom-nav {
+  .bottom-nav {
     display: none;
   }
 }

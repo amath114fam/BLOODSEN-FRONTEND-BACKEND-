@@ -45,16 +45,69 @@
       <span class="bottom-nav-label">Particip.</span>
     </router-link>
 
+    <button
+      type="button"
+      class="bottom-nav-item"
+      aria-label="Déconnexion"
+      @click="ouvrirLogout"
+    >
+      <span class="bottom-nav-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 21H5C4.44772 21 4 20.5523 4 20V4C4 3.44772 4.44772 3 5 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      </span>
+      <span class="bottom-nav-label">Déco.</span>
+    </button>
+
   </nav>
+
+  <LogoutModal
+    :visible="afficherModalLogout"
+    :chargement="deconnexionEnCours"
+    @annuler="fermerModalLogout"
+    @confirmer="confirmerLogout"
+  />
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import LogoutModal from '@/components/LogoutModal.vue'
+
 defineProps({
   pendingCount: {
     type: [Number, String],
     default: null,
   },
 })
+
+const router = useRouter()
+const auth = useAuthStore()
+
+// ==========================================
+// MODAL DE DÉCONNEXION
+// ==========================================
+
+const afficherModalLogout = ref(false)
+const deconnexionEnCours = ref(false)
+
+function ouvrirLogout() {
+  afficherModalLogout.value = true
+}
+
+function fermerModalLogout() {
+  if (deconnexionEnCours.value) return
+  afficherModalLogout.value = false
+}
+
+function confirmerLogout() {
+  deconnexionEnCours.value = true
+  auth.logout()
+  router.push('/connexion')
+}
 </script>
 
 <style scoped>
@@ -94,8 +147,14 @@ defineProps({
   flex: 1;
   height: 100%;
 
+  border: none;
+  background: transparent;
+
   color: #8a94a3;
+  font-family: inherit;
   text-decoration: none;
+
+  cursor: pointer;
 
   transition: color 0.15s ease;
 }

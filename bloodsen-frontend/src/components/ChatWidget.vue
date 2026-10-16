@@ -566,7 +566,6 @@ watch(estOuvert, (valeur) => {
 /* ==========================================
    RESPONSIVE (mobile)
 ========================================== */
-
 @media (max-width: 480px) {
   .chat-window {
     bottom: 0;
@@ -581,8 +580,9 @@ watch(estOuvert, (valeur) => {
   }
 
   .chat-bubble {
-    bottom: 20px;
-    right: 20px;
+    /* Au-dessus du bottom nav (64px) + marge (16px) */
+    bottom: 80px;
+    right: 16px;
   }
 }
 </style>

@@ -1,19 +1,6 @@
 <template>
   <div class="public-layout">
 
-    <!-- ==========================================
-         BANDEAU D'URGENCE (au-dessus de la navbar)
-    =========================================== -->
-    <router-link to="/demande-urgente" class="urgent-banner">
-      <div class="container urgent-banner-content">
-        <span class="urgent-dot"></span>
-        <span class="urgent-banner-text">
-          Un proche a besoin de sang en urgence ?
-          <strong>Faites une demande maintenant →</strong>
-        </span>
-      </div>
-    </router-link>
-
     <header class="site-header">
       <div class="container header-content">
 
@@ -28,10 +15,30 @@
 
         <!-- Navigation desktop -->
         <nav class="main-nav">
-          <router-link to="/">Accueil</router-link>
-          <a href="#comment-ca-marche">Comment ça marche</a>
-          <a href="#pourquoi-donner">Pourquoi donner</a>
-          <a href="#contact">Contact</a>
+          <router-link
+            to="/"
+            :class="{ 'nav-active': route.path === '/' && !sectionActive }"
+          >
+            Accueil
+          </router-link>
+          <a
+            href="#comment-ca-marche"
+            :class="{ 'nav-active': sectionActive === 'comment-ca-marche' }"
+          >
+            Comment ça marche
+          </a>
+          <a
+            href="#pourquoi-donner"
+            :class="{ 'nav-active': sectionActive === 'pourquoi-donner' }"
+          >
+            Pourquoi donner
+          </a>
+          <a
+            href="#contact"
+            :class="{ 'nav-active': sectionActive === 'contact' }"
+          >
+            Contact
+          </a>
         </nav>
 
         <!-- Actions desktop -->
@@ -132,6 +139,19 @@
 
       </div>
     </header>
+
+        <!-- ==========================================
+         BANDEAU D'URGENCE (au-dessus de la navbar)
+    =========================================== -->
+    <router-link to="/demande-urgente" class="urgent-banner">
+      <div class="container urgent-banner-content">
+        <span class="urgent-dot"></span>
+        <span class="urgent-banner-text">
+          Un proche a besoin de sang en urgence ?
+          <strong>Faites une demande maintenant →</strong>
+        </span>
+      </div>
+    </router-link>
 
     <main>
       <RouterView />
@@ -242,8 +262,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { RouterView, useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { RouterView, useRouter, useRoute } from 'vue-router'
 import { X, Menu, LayoutDashboard, LogOut } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import ChatWidget from '@/components/ChatWidget.vue'
@@ -251,9 +271,58 @@ import LogoutModal from '@/components/LogoutModal.vue'
 import PublicBottomNav from '@/views/public/PublicBottomNav.vue'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 const isMenuOpen = ref(false)
+
+// ==========================================
+// SECTION ACTIVE (scroll spy)
+// ==========================================
+
+const sectionActive = ref('')
+
+let observer = null
+
+function initScrollSpy() {
+  const sections = ['comment-ca-marche', 'pourquoi-donner', 'contact']
+
+  observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          sectionActive.value = entry.target.id
+        }
+      })
+    },
+    {
+      rootMargin: '-100px 0px -70% 0px',
+      threshold: 0,
+    }
+  )
+
+  sections.forEach((id) => {
+    const el = document.getElementById(id)
+    if (el) observer.observe(el)
+  })
+}
+
+function onScroll() {
+  // Si on est tout en haut, aucune section n'est active
+  if (window.scrollY < 200) {
+    sectionActive.value = ''
+  }
+}
+
+onMounted(() => {
+  initScrollSpy()
+  window.addEventListener('scroll', onScroll)
+})
+
+onUnmounted(() => {
+  if (observer) observer.disconnect()
+  window.removeEventListener('scroll', onScroll)
+})
 
 // ==========================================
 // MODAL DE DÉCONNEXION
@@ -297,6 +366,8 @@ const lienTableauDeBord = computed(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+
+  overflow-x: visible;
 }
 
 main {
@@ -308,6 +379,11 @@ main {
 ======================================== */
 
 .urgent-banner {
+  position: sticky;
+  /* top = hauteur de la navbar (76px desktop, 64px mobile) */
+  top: 76px;
+  z-index: 49;
+
   display: block;
 
   background: linear-gradient(90deg, #8b0000 0%, #c8102e 50%, #8b0000 100%);
@@ -378,10 +454,15 @@ main {
 ======================================== */
 
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+
   background: #fff;
   border-bottom: 1px solid var(--bloodsen-border);
-}
 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
 .header-content {
   min-height: 76px;
   display: flex;
@@ -407,15 +488,38 @@ main {
 
 .main-nav a,
 .login-link {
+  position: relative;
+
   color: var(--bloodsen-dark);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
+
+  transition: color 0.2s ease;
 }
 
 .main-nav a:hover,
 .login-link:hover {
   color: var(--bloodsen-red);
+}
+
+/* Lien actif : souligné rouge */
+.main-nav a.nav-active {
+  color: var(--bloodsen-red);
+  font-weight: 700;
+}
+
+.main-nav a.nav-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+
+  height: 2px;
+
+  background-color: var(--bloodsen-red);
+  border-radius: 1px;
 }
 
 .header-actions {
@@ -662,6 +766,13 @@ main {
     gap: 12px 20px;
   }
 
+  .site-header {
+    display: none;
+  }
+
+  .urgent-banner {
+    top: 0;
+  }
   /* Bandeau d'urgence en mobile */
   .urgent-banner-content {
     justify-content: flex-start;

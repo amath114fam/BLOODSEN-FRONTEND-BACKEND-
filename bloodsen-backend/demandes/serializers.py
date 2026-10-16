@@ -178,6 +178,9 @@ class SollicitationSerializer(serializers.ModelSerializer):
     groupe_sanguin = serializers.CharField(source='demande.groupe_sanguin', read_only=True)
     urgence = serializers.CharField(source='demande.urgence', read_only=True)
     message = serializers.CharField(source='demande.message', read_only=True)
+        # Coordonnées GPS de la structure (pour le lien OpenStreetMap)
+    structure_latitude = serializers.SerializerMethodField()
+    structure_longitude = serializers.SerializerMethodField()
 
     class Meta:
         model = Sollicitation
@@ -187,6 +190,8 @@ class SollicitationSerializer(serializers.ModelSerializer):
             'structure_nom',
             'structure_region',
             'structure_ville',
+            'structure_latitude',      
+            'structure_longitude',    
             'groupe_sanguin',
             'urgence',
             'message',
@@ -206,6 +211,21 @@ class SollicitationSerializer(serializers.ModelSerializer):
 
     def get_structure_ville(self, obj):
         return obj.demande.ville.nom if obj.demande.ville else "—"
+    
+    def get_structure_latitude(self, obj):
+        """
+        Renvoie la latitude :
+          - de la structure (si STRUCTURE)
+          - des coordonnées d'urgence (si PROCHE/PUBLIC)
+        """
+        if obj.demande.structure and obj.demande.structure.latitude:
+            return obj.demande.structure.latitude
+        return obj.demande.latitude_urgence
+
+    def get_structure_longitude(self, obj):
+        if obj.demande.structure and obj.demande.structure.longitude:
+            return obj.demande.structure.longitude
+        return obj.demande.longitude_urgence
 # =====================================================
 # SERIALIZER : donneurs d'une structure
 # =====================================================

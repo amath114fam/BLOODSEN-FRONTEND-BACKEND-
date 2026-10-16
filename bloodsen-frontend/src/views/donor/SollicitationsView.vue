@@ -47,6 +47,16 @@
           <p v-if="request.distance !== null && request.distance !== undefined" class="request-distance">
             <MapPin :size="14" :stroke-width="2" />
             À {{ request.distance.toFixed(1) }} km de vous
+
+            <a
+              v-if="lienCarte(request)"
+              :href="lienCarte(request)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="map-link"
+            >
+              Voir sur la carte →
+            </a>
           </p>
 
           <p>« {{ request.message }} »</p>
@@ -206,6 +216,8 @@ const requests = computed(() => {
     status: STATUT_API_VERS_UI[s.statut] || 'pending',
     date: s.date_creation,
     distance: s.distance_km,
+    latitude: s.structure_latitude,
+    longitude: s.structure_longitude,
   }))
 })
 
@@ -241,6 +253,16 @@ const emptyStateMessage = computed(() => {
   return labels[activeTab.value]
 })
 
+
+// ==========================================
+// CARTE
+// ==========================================
+
+function lienCarte(request) {
+  if (!request.latitude || !request.longitude) return null
+
+  return `https://www.openstreetmap.org/?mlat=${request.latitude}&mlon=${request.longitude}#map=15/${request.latitude}/${request.longitude}`
+}
 
 
 // ==========================================
@@ -400,6 +422,7 @@ async function confirmerAction() {
 .request-distance {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 
   margin: 0 0 8px !important;
@@ -408,6 +431,19 @@ async function confirmerAction() {
   font-size: 13px !important;
   font-weight: 600;
   font-style: normal !important;
+}
+
+.map-link {
+  margin-left: 4px;
+
+  color: #2760d8;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.map-link:hover {
+  text-decoration: underline;
 }
 
 /* Actions */

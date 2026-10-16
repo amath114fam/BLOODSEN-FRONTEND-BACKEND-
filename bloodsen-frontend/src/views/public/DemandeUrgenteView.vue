@@ -2,6 +2,11 @@
   <div class="demande-urgente-view">
     <div class="container">
 
+      <router-link to="/" class="back-home">
+        <ArrowLeft :size="18" :stroke-width="2" />
+        Retour à l'accueil
+      </router-link>
+
       <div class="page-header">
         <span class="page-badge">
           <AlertCircle :size="14" />
@@ -174,7 +179,7 @@
 
 <script setup>
 import { reactive, ref, computed } from 'vue'
-import { AlertCircle, CheckCircle, Search } from 'lucide-vue-next'
+import { AlertCircle, CheckCircle, Search, ArrowLeft } from 'lucide-vue-next'
 import api from '@/services/api'
 
 import AppCard from '@/components/AppCard.vue'
@@ -238,11 +243,9 @@ function onCoords({ latitude, longitude }) {
 // ==========================================
 
 async function soumettre() {
-  // Réinitialisation
   erreurGlobale.value = ''
   erreurs.value = {}
 
-  // Envoi direct au backend
   loading.value = true
   try {
     await api.post('/demande-urgente/', {
@@ -262,10 +265,8 @@ async function soumettre() {
     succes.value = true
   } catch (error) {
     if (error.response?.status === 400) {
-      // Le backend renvoie { champ: ["erreur"] } → affiché sous chaque champ
       erreurs.value = error.response.data
     } else {
-      // Erreurs réseau, 500, etc.
       erreurGlobale.value = 'Une erreur est survenue. Veuillez réessayer.'
     }
   } finally {
@@ -277,8 +278,31 @@ async function soumettre() {
 <style scoped>
 .demande-urgente-view {
   min-height: 100vh;
-  padding: 60px 0;
-  background: linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%);
+  padding: 40px 0 60px;
+  background-color: #ffffff;
+}
+
+/* ========================================
+   LIEN RETOUR (simple, sans bouton)
+======================================== */
+
+.back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  margin-bottom: 32px;
+
+  color: #60708a;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+
+  transition: color 0.15s ease;
+}
+
+.back-home:hover {
+  color: var(--bloodsen-red);
 }
 
 .page-header {
@@ -371,6 +395,7 @@ async function soumettre() {
   margin: 60px auto;
   padding: 48px 32px;
   background-color: #fff;
+  border: 1px solid #e6eaf0;
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
   text-align: center;
@@ -426,7 +451,6 @@ async function soumettre() {
   border-color: var(--bloodsen-red);
   color: var(--bloodsen-red);
 }
-
 
 @media (max-width: 700px) {
   .page-header h1 { font-size: 28px; }

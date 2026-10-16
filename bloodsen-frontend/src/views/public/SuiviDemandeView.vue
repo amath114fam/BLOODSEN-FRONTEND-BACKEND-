@@ -2,6 +2,11 @@
   <div class="suivi-demande-view">
     <div class="container">
 
+      <router-link to="/" class="back-home">
+        <ArrowLeft :size="18" :stroke-width="2" />
+        Retour à l'accueil
+      </router-link>
+
       <div class="page-header">
         <span class="page-badge">
           <Search :size="14" />
@@ -100,7 +105,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Search } from 'lucide-vue-next'
+import { Search, ArrowLeft } from 'lucide-vue-next'
 import api from '@/services/api'
 import AppInput from '@/components/AppInput.vue'
 import AppButton from '@/components/AppButton.vue'
@@ -172,8 +177,31 @@ function formaterDate(iso) {
 <style scoped>
 .suivi-demande-view {
   min-height: 100vh;
-  padding: 60px 0;
+  padding: 40px 0 60px;
   background-color: #ffffff;
+}
+
+/* ========================================
+   LIEN RETOUR (simple, sans bouton)
+======================================== */
+
+.back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  margin-bottom: 32px;
+
+  color: #60708a;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+
+  transition: color 0.15s ease;
+}
+
+.back-home:hover {
+  color: var(--bloodsen-red);
 }
 
 .page-header {
@@ -216,6 +244,7 @@ function formaterDate(iso) {
   margin: 0 auto;
   padding: 32px;
   background-color: #fff;
+  border: 1px solid #e6eaf0;
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 }
@@ -232,6 +261,7 @@ function formaterDate(iso) {
   margin: 0 auto;
   padding: 32px;
   background-color: #fff;
+  border: 1px solid #e6eaf0;
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 }

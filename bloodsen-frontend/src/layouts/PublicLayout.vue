@@ -235,6 +235,9 @@
       @confirmer="confirmerLogout"
     />
 
+        <!-- Bottom nav mobile (remplace le burger) -->
+    <PublicBottomNav />
+
   </div>
 </template>
 
@@ -245,6 +248,7 @@ import { X, Menu, LayoutDashboard, LogOut } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import ChatWidget from '@/components/ChatWidget.vue'
 import LogoutModal from '@/components/LogoutModal.vue'
+import PublicBottomNav from '@/views/public/PublicBottomNav.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -684,7 +688,11 @@ main {
   }
 
   .menu-button {
-    display: block;
+    display: none;
+  }
+
+    .mobile-menu {
+    display: none !important;
   }
 
   .mobile-menu {

@@ -146,11 +146,9 @@
               </td>
 
               <td>
-              <td>
                 <AppBadge :variant="badgeStatutVariant(request.statut)">
                   {{ badgeStatutLabel(request.statut) }}
                 </AppBadge>
-              </td>
               </td>
 
               <td>

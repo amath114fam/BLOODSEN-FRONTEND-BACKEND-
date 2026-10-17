@@ -9,6 +9,8 @@ from drf_spectacular.utils import extend_schema
 import secrets
 from datetime import timedelta
 from django.utils import timezone
+from accounts.services import verifier_gamification
+
 
 
 from .models import Utilisateur, InscriptionEnAttente, ProfilDonneur, ProfilStructureSante, TokenReinitialisationMotDePasse
@@ -299,6 +301,7 @@ class MoiView(APIView):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             profil.refresh_from_db()
+            verifier_gamification(profil)
 
             return Response(
                 {

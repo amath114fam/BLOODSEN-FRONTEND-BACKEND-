@@ -6,10 +6,6 @@
         <h2>Mes participations</h2>
         <p>Suivez vos participations aux demandes de sang.</p>
       </div>
-
-      <AppButton variant="primary" to="/donneur/sollicitations">
-        Nouvelle participation
-      </AppButton>
     </div>
 
     <!-- Indicateurs -->

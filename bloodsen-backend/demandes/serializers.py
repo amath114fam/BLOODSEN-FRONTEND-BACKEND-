@@ -8,6 +8,8 @@ from datetime import timedelta
 from accounts.models import Ville
 import secrets
 from accounts.constants import normaliser_telephone
+from accounts.constants import valider_nom_propre
+
 
 
 class DemandeCreateSerializer(serializers.ModelSerializer):
@@ -317,7 +319,6 @@ class DemandeUrgentePublicSerializer(serializers.Serializer):
 
     def validate_telephone_demandeur(self, value):
         """Téléphone sénégalais normalisé."""
-        from accounts.constants import normaliser_telephone
         try:
             return normaliser_telephone(value)
         except ValueError as e:
@@ -333,7 +334,6 @@ class DemandeUrgentePublicSerializer(serializers.Serializer):
 
     def validate_nom_patient(self, value):
         """Lettres uniquement + longueur min/max."""
-        from accounts.constants import valider_nom_propre
         try:
             return valider_nom_propre(value, 'le nom du patient', min_length=2, max_length=200)
         except ValueError as e:

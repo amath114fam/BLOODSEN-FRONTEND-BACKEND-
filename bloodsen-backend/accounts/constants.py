@@ -60,7 +60,7 @@ def normaliser_telephone(telephone):
         nettoye = nettoye[4:]
 
     # 4. À ce stade, on doit avoir 9 chiffres (format sénégalais)
-    if not re.match(r'^7[05678]\d{7}$', nettoye):
+    if not re.match(r'^7[015678]\d{7}$', nettoye):
         raise ValueError(
             "Numéro de téléphone sénégalais invalide. "
             "Format attendu : +221 7X XXX XX XX (ex: +221771234567)."

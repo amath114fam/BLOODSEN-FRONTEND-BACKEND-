@@ -70,7 +70,7 @@
         <AppInput
           id="search-participation"
           v-model="recherche"
-          placeholder="Rechercher un donneur..."
+          placeholder="Rechercher un donneur ou une demande"
           class="search-input"
         >
           <template #icon>

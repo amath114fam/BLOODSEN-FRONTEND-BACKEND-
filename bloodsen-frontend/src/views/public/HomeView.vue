@@ -349,7 +349,7 @@ const steps = [
   },
   {
     titre: 'Une demande est créée',
-    description: 'Une structure de santé peut créer une demande de sang en précisant ses besoins.',
+    description: 'Une structure de santé ou un proche de patient peut créer une demande de sang en précisant ses besoins.',
     icon: ClipboardList,
   },
   {

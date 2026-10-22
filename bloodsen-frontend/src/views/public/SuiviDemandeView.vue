@@ -68,10 +68,10 @@
             <span class="stat-label">Ont accepté</span>
             <strong class="stat-value success">{{ demande.sollicitations_acceptees }}</strong>
           </div>
-          <div class="stat">
+          <!-- <div class="stat">
             <span class="stat-label">Dons confirmés</span>
             <strong class="stat-value success">{{ demande.participations_confirmees }}</strong>
-          </div>
+          </div> -->
         </div>
 
         <div class="info-grid">
@@ -309,7 +309,7 @@ function formaterDate(iso) {
 /* Stats */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin-bottom: 24px;
 }

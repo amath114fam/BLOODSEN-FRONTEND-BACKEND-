@@ -35,7 +35,7 @@
         </div>
 
         <div class="hero-image-wrapper">
-          <img src="@/assets/images/connexion.jpg" alt="Don de sang" />
+          <img src="@/assets/images/connexion.webp" alt="Don de sang" />
         </div>
       </div>
     </section>
@@ -99,7 +99,7 @@
       <div class="why-donate-bg"></div>
       <div class="container why-donate-content">
         <div class="why-donate-image reveal">
-          <img src="@/assets/images/medecine.jpg" alt="Don de sang" />
+          <img src="@/assets/images/medecine.webp" alt="Don de sang" />
         </div>
 
         <div class="why-donate-text reveal">
@@ -578,7 +578,7 @@ onUnmounted(() => {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background-image: url('@/assets/images/header.jpg');
+  background-image: url('@/assets/images/header.webp');
   background-size: cover;
   background-position: center;
   opacity: 0.15;

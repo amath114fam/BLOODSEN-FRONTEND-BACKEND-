@@ -208,8 +208,7 @@
               <circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2" />
             </svg>
             <span>
-              Centre National de Transfusion Sanguine (CNTS),
-              Fann Résidence, Dakar, Sénégal
+              Bloodsen, Dakar, Sénégal
             </span>
           </div>
 
@@ -217,7 +216,7 @@
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M5 4H9L11 9L8.5 10.5C9.57 12.67 11.33 14.43 13.5 15.5L15 13L20 15V19C20 20.1 19.1 21 18 21C10.27 21 4 14.73 4 7C4 5.9 4.9 5 6 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
-            <span>+221 33 821 54 20</span>
+            <span>+221 70 864 85 15</span>
           </div>
 
           <div class="footer-contact-item">
@@ -225,7 +224,7 @@
               <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2" />
               <path d="M3 7L12 13L21 7" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
             </svg>
-            <span>contact@bloodsen.sn</span>
+            <span>amathfam2002@gmail.com</span>
           </div>
 
         </div>
